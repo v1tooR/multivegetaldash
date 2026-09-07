@@ -1,0 +1,6 @@
+wordpress/
+.env
+.env.example
+docker/dumps/
+.DS_Store
+docker-compose.yml
