@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Multivegetal — Analytics (preview)</title>
+
+<!-- Design System Multivegetal: os mesmos tokens declarados em styles.css.
+     No WordPress eles chegam pelo tema; aqui são inlinados para que o
+     preview seja fiel sem depender de nada externo. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+	:root {
+		--color-primary:        #4A5E56;
+		--color-primary-light:  #5a7269;
+		--color-primary-dark:   #374842;
+		--color-secondary:      #80967C;
+		--color-accent:         #D5B68D;
+		--color-accent-dark:    #c0a074;
+		--color-text:           #1A1A1A;
+		--color-text-muted:     #5a5a5a;
+		--color-text-light:     #8a8a8a;
+		--color-text-inverse:   #ffffff;
+		--color-bg:             #ffffff;
+		--color-bg-soft:        #f8f6f2;
+		--color-bg-muted:       #f0ede7;
+		--color-border:         #e0ddd8;
+		--color-border-strong:  #c8c4bc;
+		--color-success:        #4A8C6A;
+		--color-warning:        #C4922A;
+		--color-error:          #B85C4A;
+		--font-primary:        'Poppins', sans-serif;
+	}
+	html, body { margin: 0; }
+	body { background: var(--color-bg-soft); }
+</style>
+
+<link rel="stylesheet" href="assets/dashboard.css">
+</head>
+<body>
+
+<div class="mv-an">
+	<div class="mv-an-page">
+
+		<header class="mv-an-head">
+			<div class="mv-an-head__brand">
+				<span class="mv-an-head__logo">Multivegetal</span>
+				<span class="mv-an-head__sub">Analytics</span>
+			</div>
+			<form class="mv-an-head__tools" data-mv="filters" onsubmit="return false">
+				<label class="mv-an-sr" for="mv-an-period">Período</label>
+				<select class="mv-an-select" id="mv-an-period" name="mv_period" data-mv="period">
+					<optgroup label="Calendário">
+						<option value="today">Hoje</option>
+						<option value="yesterday">Ontem</option>
+						<option value="week">Semana até hoje</option>
+						<option value="last_week">Semana anterior</option>
+						<option value="month">Mês até hoje</option>
+						<option value="last_month">Mês anterior</option>
+						<option value="quarter">Trimestre até hoje</option>
+						<option value="last_quarter">Trimestre anterior</option>
+						<option value="year">Ano até hoje</option>
+						<option value="last_year">Ano anterior</option>
+					</optgroup>
+					<optgroup label="Janela móvel">
+						<option value="30d">Últimos 30 dias</option>
+						<option value="90d">Últimos 90 dias</option>
+						<option value="180d">Últimos 180 dias</option>
+						<option value="12m" selected>Últimos 12 meses</option>
+					</optgroup>
+					<optgroup label="Intervalo">
+						<option value="custom">Personalizado</option>
+					</optgroup>
+				</select>
+
+				<label class="mv-an-sr" for="mv-an-compare">Comparar com</label>
+				<select class="mv-an-select" id="mv-an-compare" name="mv_compare">
+					<option value="previous_period" selected>vs. período anterior</option>
+					<option value="previous_year">vs. ano anterior</option>
+				</select>
+
+				<span class="mv-an-range" data-mv="custom-range" hidden>
+					<label class="mv-an-sr" for="mv-an-after">Data inicial</label>
+					<input class="mv-an-select" type="date" id="mv-an-after" name="mv_after">
+					<span class="mv-an-range__sep" aria-hidden="true">–</span>
+					<label class="mv-an-sr" for="mv-an-before">Data final</label>
+					<input class="mv-an-select" type="date" id="mv-an-before" name="mv_before">
+					<button type="submit" class="mv-an-btn mv-an-btn--accent">Aplicar</button>
+				</span>
+
+				<label class="mv-an-sr" for="mv-an-cat">Categoria</label>
+				<select class="mv-an-select" id="mv-an-cat" name="mv_cat">
+					<option selected>Todas as categorias</option>
+					<option>Cabelo</option>
+					<option>Corpo e Banho</option>
+					<option>Massagem</option>
+					<option>Kits e Ofertas</option>
+				</select>
+
+				<button type="button" class="mv-an-btn mv-an-btn--onhead" data-mv="refresh">Recalcular agora</button>
+			</form>
+		</header>
+
+		<div class="mv-an-notice">
+			<span aria-hidden="true">⚠</span>
+			<span><strong>Pré-visualização com dados fictícios.</strong> Nenhum número desta
+			tela veio da loja — ela existe só para validar o visual e a leitura dos blocos
+			antes de ligar a camada de dados do WooCommerce.</span>
+		</div>
+
+		<div class="mv-an-meta" data-mv="meta"></div>
+
+		<div class="mv-an-tabs" role="tablist" aria-label="Seções do dashboard">
+			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p1" aria-controls="mv-p1">Visão geral</button>
+			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p2" aria-controls="mv-p2">Novos vs. Antigos</button>
+			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p3" aria-controls="mv-p3">Produtos</button>
+			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p4" aria-controls="mv-p4">Upselling</button>
+		</div>
+
+		<!-- ========== 1. VISÃO GERAL ========== -->
+		<section class="mv-an-panel" id="mv-p1" role="tabpanel" tabindex="0">
+
+			<div class="mv-an-kpis" data-mv="kpis"></div>
+
+			<div class="mv-an-grid">
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head" data-mv="monthly-toggle">
+							<h2 class="mv-an-card__title">Receita por mês — novos vs. recorrentes</h2>
+							<p class="mv-an-card__hint">Um pedido conta como “novo” quando é a primeira
+							compra daquele cliente — a mesma marcação que o WooCommerce usa nos relatórios
+							nativos. O gráfico soma vendas totais (bruto, com frete e impostos), que é o card
+							“Vendas totais” de Analytics → Receita; “Vendas líquidas” é o mesmo valor sem
+							frete nem impostos. Confira sempre no mesmo período: os relatórios nativos abrem
+							em “Mês até hoje”, e este painel em “Últimos 12 meses”.</p>
+						</div>
+						<div class="mv-an-card__body">
+							<div class="mv-an-legend">
+								<span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--s2"></i>Novos</span>
+								<span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--s1"></i>Recorrentes</span>
+							</div>
+							<div class="mv-an-chart" data-mv="monthly-chart"></div>
+							<div data-mv="monthly-table"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ========== 2. NOVOS VS. ANTIGOS ========== -->
+		<section class="mv-an-panel" id="mv-p2" role="tabpanel" tabindex="0" hidden>
+			<div class="mv-an-grid">
+
+				<div class="mv-an-col-7">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Como cada grupo compra</h2>
+							<p class="mv-an-card__hint">A diferença de comportamento é o que justifica
+							tratar os dois grupos com ofertas distintas.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="compare"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-5">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Base por estágio de relacionamento</h2>
+							<p class="mv-an-card__hint">A ordem carrega significado — por isso a escala
+							vai do tom claro ao escuro, e não em cores soltas.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="segments"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Coorte de recompra por mês da 1ª compra</h2>
+							<p class="mv-an-card__hint">Cada linha acompanha quem estreou naquele mês:
+							quantos voltaram em 30, 60 e 90 dias. Só aparecem coortes que já completaram
+							90 dias — as mais recentes ainda estão maturando e comparar seria enganoso.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="cohort"></div></div>
+					</div>
+				</div>
+
+			</div>
+		</section>
+
+		<!-- ========== 3. PRODUTOS ========== -->
+		<section class="mv-an-panel" id="mv-p3" role="tabpanel" tabindex="0" hidden>
+			<div class="mv-an-grid">
+
+				<div class="mv-an-col-7">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head" data-mv="products-toggle">
+							<h2 class="mv-an-card__title">Produtos mais vendidos por receita</h2>
+						</div>
+						<div class="mv-an-card__body">
+							<div data-mv="products-chart"></div>
+							<div data-mv="products-table"></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-5">
+					<div class="mv-an-card" style="margin-bottom:20px">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Receita por categoria</h2>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="categories"></div></div>
+					</div>
+
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Curva ABC do catálogo</h2>
+							<p class="mv-an-card__hint">Classe A concentra os primeiros 80% da receita,
+							B os 15% seguintes e C a cauda longa. Serve para decidir onde vale estoque,
+							foto nova e verba de mídia — e o que só ocupa prateleira.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="abc"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Produto de entrada ou de recompra?</h2>
+							<p class="mv-an-card__hint">“1ª compra” é a fatia dos pedidos de estreia que
+							contêm o produto; “recompra”, a fatia dos pedidos de clientes que já compraram
+							antes. Produto de entrada abre a relação; produto de recompra a sustenta — e é
+							dessa distinção que sai a régua de ofertas.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="entry"></div></div>
+					</div>
+				</div>
+
+			</div>
+		</section>
+
+		<!-- ========== 4. UPSELLING ========== -->
+		<section class="mv-an-panel" id="mv-p4" role="tabpanel" tabindex="0" hidden>
+			<div class="mv-an-grid">
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Produtos comprados juntos</h2>
+							<p class="mv-an-card__hint"><strong>Suporte</strong> = fatia de todos os pedidos
+							que contêm os dois. <strong>Confiança</strong> = de quem levou A, quantos levaram B.
+							<strong>Lift</strong> = quantas vezes esse par acontece acima do acaso — abaixo de
+							1,00 os produtos se repelem; acima de 2,00 a dupla é forte o bastante para virar
+							kit ou sugestão na página do produto.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="basket"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Lacunas de categoria</h2>
+							<p class="mv-an-card__hint">Clientes fiéis a uma categoria que nunca
+							atravessaram para outra correlacionada.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="gaps"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Lista acionável</h2>
+							<button type="button" class="mv-an-btn mv-an-btn--accent" data-mv="oppo-csv">Exportar CSV</button>
+							<p class="mv-an-card__hint">Cliente a abordar, produto a sugerir e o motivo —
+							cada linha rastreável até a regra que a gerou.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="oppo"></div></div>
+					</div>
+				</div>
+
+			</div>
+		</section>
+
+	</div>
+</div>
+
+<script>
+/* ============================================================
+   DADOS FICTÍCIOS — apenas para o preview.
+   No plugin, este objeto é impresso por wp_localize_script a
+   partir do snapshot agregado do WooCommerce.
+   Os números são internamente consistentes de propósito: os
+   totais fecham, os percentuais somam 100 e o suporte de cada
+   par bate com o número de pedidos — assim dá para conferir se
+   a interface está lendo certo, e não só se está bonita.
+   ============================================================ */
+window.MV_AN_DATA = {
+	meta: {
+		period:   '01/10/2025 – 06/09/2026',
+		previous: '01/10/2024 – 05/09/2025 (período anterior)',
+		statuses: 'Todos, exceto pendente, malsucedido e cancelado',
+		updated:  'hoje às 09:14 (cache de 6 h)'
+	},
+
+	/* Vendas líquidas = totais menos frete e impostos (~88% aqui).
+	   Ticket médio = líquidas ÷ pedidos, como no WooCommerce:
+	   1.150.000 ÷ 8.472 = 135,74. */
+	kpis: [
+		{ label: 'Vendas totais',        value: 'R$ 1,31 mi',       delta:  18.4 },
+		{ label: 'Vendas líquidas',      value: 'R$ 1,15 mi',       delta:  17.2 },
+		{ label: 'Pedidos',              value: '8.472',            delta:  12.1 },
+		{ label: 'Ticket médio',         value: 'R$ 135,74',        delta:   4.6 },
+		{ label: 'Clientes únicos',      value: '5.914',            delta:   9.8 },
+		{ label: 'Receita de recorrentes', value: '70,2', unit: '%', delta:  4.3 },
+		{ label: 'Taxa de recompra',     value: '31,4',  unit: '%',  delta:  -2.9 }
+	],
+
+	/* s1 = recorrente (base da pilha) · s2 = novo (topo) */
+	monthly: [
+		{ label: 'out/25', s1: 62000, s2: 28000 },
+		{ label: 'nov/25', s1: 71000, s2: 34000 },
+		{ label: 'dez/25', s1: 96000, s2: 47000 },
+		{ label: 'jan/26', s1: 58000, s2: 24000 },
+		{ label: 'fev/26', s1: 61000, s2: 26000 },
+		{ label: 'mar/26', s1: 69000, s2: 31000 },
+		{ label: 'abr/26', s1: 74000, s2: 29000 },
+		{ label: 'mai/26', s1: 88000, s2: 41000 },
+		{ label: 'jun/26', s1: 79000, s2: 30000 },
+		{ label: 'jul/26', s1: 83000, s2: 32000 },
+		{ label: 'ago/26', s1: 91000, s2: 36000 },
+		{ label: 'set/26', s1: 87000, s2: 33000 }
+	],
+
+	compare: [
+		{ metric: 'Ticket médio',              novo: 'R$ 118,40', recorrente: 'R$ 176,90', diff: '+49,4%' },
+		{ metric: 'Itens por pedido',          novo: '1,8',       recorrente: '2,9',       diff: '+61,1%' },
+		{ metric: 'Categorias por pedido',     novo: '1,2',       recorrente: '1,9',       diff: '+58,3%' },
+		{ metric: 'Uso de cupom',              novo: '24,1%',     recorrente: '11,6%',     diff: '−12,5 p.p.' },
+		{ metric: 'Intervalo médio de recompra', novo: '—',       recorrente: '74 dias',   diff: '—' }
+	],
+
+	cohort: [
+		{ label: 'out/25', size: 398, d30:  8, d60: 15, d90: 22 },
+		{ label: 'nov/25', size: 441, d30: 10, d60: 18, d90: 25 },
+		{ label: 'dez/25', size: 612, d30:  7, d60: 14, d90: 21 },
+		{ label: 'jan/26', size: 412, d30:  9, d60: 17, d90: 24 },
+		{ label: 'fev/26', size: 388, d30: 11, d60: 19, d90: 27 },
+		{ label: 'mar/26', size: 461, d30: 12, d60: 21, d90: 30 },
+		{ label: 'abr/26', size: 430, d30: 14, d60: 23, d90: 33 },
+		{ label: 'mai/26', size: 585, d30: 16, d60: 26, d90: 36 }
+	],
+
+	segments: [
+		{ label: 'Novo — 1 pedido',        customers: 3412, pct: 57.7 },
+		{ label: 'Recorrente — 2 a 3',     customers: 1508, pct: 25.5 },
+		{ label: 'Fiel — 4 ou mais',       customers:  604, pct: 10.2 },
+		{ label: 'Em risco — 90 a 180 d',  customers:  268, pct:  4.5 },
+		{ label: 'Inativo — mais de 180 d',customers:  122, pct:  2.1 }
+	],
+
+	topProducts: [
+		{ name: 'Shampoo Jaborandi 300 ml',           revenue: 128400, qty: 1712, share: 9.8 },
+		{ name: 'Creme de Massagem Arnica 1 kg',      revenue:  96200, qty:  742, share: 7.3 },
+		{ name: 'Condicionador Babosa 300 ml',        revenue:  84700, qty: 1185, share: 6.5 },
+		{ name: 'Máscara de Hidratação Karité 250 g', revenue:  72900, qty:  918, share: 5.6 },
+		{ name: 'Óleo de Rícino 60 ml',               revenue:  61300, qty: 1402, share: 4.7 },
+		{ name: 'Sabonete de Argila Verde 90 g',      revenue:  54800, qty: 3216, share: 4.2 },
+		{ name: 'Creme Hidratante Karité 250 g',      revenue:  48600, qty:  764, share: 3.7 },
+		{ name: 'Gel Fixador Aloe Vera 300 g',        revenue:  41200, qty:  892, share: 3.1 },
+		{ name: 'Kit Cabelo Nutrição',                revenue:  38900, qty:  312, share: 3.0 },
+		{ name: 'Óleo de Coco Extravirgem 100 ml',    revenue:  33500, qty:  671, share: 2.6 }
+	],
+
+	/* Classes fecham em 103 produtos e nos mesmos R$ 1.310.000 do topo. */
+	abc: [
+		{ label: 'Classe A — os primeiros 80%', products: 12, revenue: 1040000, pct: 79.4 },
+		{ label: 'Classe B — os 15% seguintes', products: 23, revenue:  199000, pct: 15.2 },
+		{ label: 'Classe C — cauda longa',      products: 68, revenue:   71000, pct:  5.4 }
+	],
+
+	categories: [
+		{ name: 'Cabelo',          revenue: 611000, share: 46.6 },
+		{ name: 'Corpo e Banho',   revenue: 348000, share: 26.6 },
+		{ name: 'Massagem',        revenue: 214000, share: 16.3 },
+		{ name: 'Kits e Ofertas',  revenue: 137000, share: 10.5 }
+	],
+
+	entry: [
+		{ name: 'Shampoo Jaborandi 300 ml',           first: 31.2, repeat: 44.8, role: 'Entrada'  },
+		{ name: 'Sabonete de Argila Verde 90 g',      first: 22.4, repeat: 18.1, role: 'Entrada'  },
+		{ name: 'Kit Cabelo Nutrição',                first: 14.8, repeat:  6.2, role: 'Entrada'  },
+		{ name: 'Creme de Massagem Arnica 1 kg',      first:  6.1, repeat: 29.4, role: 'Recompra' },
+		{ name: 'Máscara de Hidratação Karité 250 g', first:  5.3, repeat: 26.7, role: 'Recompra' },
+		{ name: 'Óleo de Rícino 60 ml',               first:  4.9, repeat: 22.3, role: 'Recompra' }
+	],
+
+	/* suporte = pedidos do par ÷ 8.472 pedidos do período */
+	basket: [
+		{ a: 'Shampoo Jaborandi 300 ml',      b: 'Condicionador Babosa 300 ml',        orders: 892, support: 10.53, confidence: 52.1, lift: 3.84 },
+		{ a: 'Máscara de Hidratação Karité 250 g', b: 'Condicionador Babosa 300 ml',        orders: 411, support:  4.85, confidence: 38.7, lift: 2.85 },
+		{ a: 'Creme de Massagem Arnica 1 kg', b: 'Óleo de Rícino 60 ml',               orders: 268, support:  3.16, confidence: 36.1, lift: 2.41 },
+		{ a: 'Sabonete de Argila Verde 90 g', b: 'Creme Hidratante Karité 250 g',      orders: 314, support:  3.71, confidence: 22.4, lift: 1.92 },
+		{ a: 'Shampoo Jaborandi 300 ml',      b: 'Óleo de Rícino 60 ml',               orders: 356, support:  4.20, confidence: 20.8, lift: 1.53 },
+		{ a: 'Gel Fixador Aloe Vera 300 g',   b: 'Shampoo Jaborandi 300 ml',           orders: 198, support:  2.34, confidence: 31.5, lift: 1.44 }
+	],
+
+	gaps: [
+		{ from: 'Cabelo',        to: 'Massagem',      customers: 1912, suggestion: 'Creme de Massagem Arnica 1 kg', potential: 148300 },
+		{ from: 'Cabelo',        to: 'Corpo e Banho', customers: 2184, suggestion: 'Sabonete de Argila Verde 90 g', potential:  61400 },
+		{ from: 'Corpo e Banho', to: 'Cabelo',        customers:  743, suggestion: 'Shampoo Jaborandi 300 ml',      potential:  32900 },
+		{ from: 'Massagem',      to: 'Corpo e Banho', customers:  486, suggestion: 'Creme Hidratante Karité 250 g', potential:  18700 }
+	],
+
+	opportunities: [
+		{ customer: 'Ana Ribeiro',     email: 'ana.ribeiro@exemplo.com',     bought: 'Shampoo Jaborandi 300 ml',      suggest: 'Condicionador Babosa 300 ml',   reason: 'Co-compra · lift 3,84',            potential:  38.90 },
+		{ customer: 'Paulo Tavares',   email: 'paulo.tavares@exemplo.com',   bought: 'Máscara de Hidratação Karité 250 g', suggest: 'Condicionador Babosa 300 ml',   reason: 'Co-compra · lift 2,85',            potential:  38.90 },
+		{ customer: 'Carlos Nunes',    email: 'carlos.nunes@exemplo.com',    bought: 'Creme de Massagem Arnica 1 kg', suggest: 'Óleo de Rícino 60 ml',          reason: 'Co-compra · lift 2,41',            potential:  29.90 },
+		{ customer: 'Juliana Costa',   email: 'juliana.costa@exemplo.com',   bought: 'Cabelo — 6 pedidos',            suggest: 'Creme de Massagem Arnica 1 kg', reason: 'Lacuna de categoria · Massagem',   potential: 129.90 },
+		{ customer: 'Marina Alves',    email: 'marina.alves@exemplo.com',    bought: 'Cabelo — 4 pedidos',            suggest: 'Sabonete de Argila Verde 90 g', reason: 'Lacuna de categoria · Corpo e Banho', potential: 22.50 },
+		{ customer: 'Ricardo Lima',    email: 'ricardo.lima@exemplo.com',    bought: 'Sabonete de Argila Verde 90 g', suggest: 'Creme Hidratante Karité 250 g', reason: 'Co-compra · lift 1,92',            potential:  44.90 },
+		{ customer: 'Bruno Martins',   email: 'bruno.martins@exemplo.com',   bought: 'Corpo e Banho — 3 pedidos',     suggest: 'Shampoo Jaborandi 300 ml',      reason: 'Lacuna de categoria · Cabelo',     potential:  42.90 },
+		{ customer: 'Fernanda Dias',   email: 'fernanda.dias@exemplo.com',   bought: 'Shampoo Jaborandi 300 ml',      suggest: 'Gel Fixador Aloe Vera 300 g',   reason: 'Co-compra · lift 1,44',            potential:  34.90 }
+	]
+};
+</script>
+<script src="assets/dashboard.js"></script>
+</body>
+</html>
