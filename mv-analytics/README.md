@@ -16,9 +16,40 @@ Poppins, e tokens com fallback embutido, como em `mv-products-grid/assets/grid.c
 | **B** | Bootstrap PHP + camada de dados + blocos 1 e 2 | ✅ pronto |
 | **C** | Produtos + upselling | ✅ pronto |
 | **D** | Export CSV server-side, cache, `.zip` instalável | ✅ pronto |
+| **E** (1.3) | Abas Clientes e Pedidos, ficha do cliente, evolução com comparação, mapa de calor | ✅ pronto |
+
+## O que o painel responde
+
+| Aba | Perguntas |
+|---|---|
+| **Visão geral** | Quanto vendi, para quantos clientes, quantos são novos? Estou acima do período anterior (linha atual × comparada, por hora/dia/semana/mês)? Em que dia e hora os clientes compram? Quantos pedidos ficaram parados, cancelados ou malsucedidos? |
+| **Clientes** | Quantas vezes cada cliente já comprou? Quem são os melhores do período? De que estados vem a receita? Quem está em risco ou inativo (para reativação)? |
+| **Pedidos** | Quais pedidos exatamente entraram nos totais, com os itens de cada um? Qual a compra nº daquele cliente? Qual meio de pagamento traz ticket maior? Qual cupom traz cliente novo e qual só dá desconto a quem já compraria? |
+| **Novos vs. Antigos / Produtos / Upselling** | Inalteradas desde a 1.2. |
+
+Clicar no nome de um cliente em qualquer tabela abre a **ficha do cliente**:
+número de compras, total gasto, ticket médio, 1ª e última compra, intervalo médio
+entre pedidos, **próxima compra prevista** (com aviso de atraso), gasto por mês,
+produtos que mais compra, cupons usados e o histórico completo de pedidos com os
+itens exatos — além de links para os pedidos dele no WooCommerce, para o relatório
+de cliente do Analytics e para o perfil do usuário.
+
+### Como os dados chegam
+
+- **Snapshot em cache** (6 h, transient): KPIs, gráficos e rankings.
+- **Sob demanda via AJAX** (sem cache): explorador de clientes, explorador de
+  pedidos e a ficha do cliente. A base inteira não cabe num transient, e a ficha é
+  lida um cliente por vez. Os três endpoints exigem nonce **e** a capability do
+  painel — as respostas carregam nome e e-mail. Os exploradores só consultam
+  quando a aba deles é aberta.
+- **Exportação CSV** de oportunidades, clientes e pedidos, gerada no servidor,
+  herdando o período da tela **e** os filtros do explorador. Texto que começa com
+  `= + - @` recebe um apóstrofo para o Excel não executá-lo como fórmula.
 
 Abra `preview.html` direto no navegador: ele roda sem WordPress, com dados
-fictícios, e serve para validar o visual sem tocar na loja.
+fictícios, e serve para validar o visual sem tocar na loja. Os exploradores e a
+ficha do cliente também funcionam no preview: o `MV_AN_MOCK` responde no lugar do
+AJAX com uma amostra de 180 clientes gerada com semente fixa.
 
 ## Conferindo contra o WooCommerce
 
@@ -41,7 +72,16 @@ Os períodos são calculados em **dias inteiros** (de 00:00:00 a 23:59:59), como
 no WooCommerce. Uma janela que terminasse no instante atual cortaria o primeiro
 e o último dia pela metade e já bastaria para os totais divergirem.
 
-Três detalhes que também afetam a comparação:
+Quatro detalhes que também afetam a comparação:
+
+- **Tipo de data.** O Analytics recorta o período pela opção "Tipo de data"
+  (Analytics → Configurações), que por padrão é a **data de pagamento** — não a
+  de criação. Até a 1.2 este painel usava sempre a criação, e um pedido criado
+  num dia e pago no outro caía em períodos diferentes nos dois painéis. Desde a
+  1.3 o painel lê a mesma opção (`woocommerce_date_type`) e mostra qual está em
+  uso na faixa de contexto ("Datas por"). Exceção proposital: o quadro de
+  **status** usa sempre a criação, porque pedido cancelado nunca tem data de
+  pagamento e sumiria do quadro feito para mostrá-lo.
 
 - **Status.** O conjunto sai da mesma opção que o Analytics usa
   (`woocommerce_excluded_report_order_statuses`) — por padrão tudo menos
@@ -52,6 +92,17 @@ Três detalhes que também afetam a comparação:
   como pedido.
 - **Vendas totais incluem frete e impostos**; líquidas, não. A diferença entre
   os dois cards é exatamente isso.
+
+### Compatibilidade com o armazenamento de pedidos (HPOS)
+
+Os agregados saem das tabelas de lookup do Analytics, que existem com ou sem
+HPOS. Os três pontos que precisam de dado fora delas tratam os dois modos:
+
+- **Forma de pagamento**: coluna `payment_method_title` de `wc_orders` com HPOS;
+  meta `_payment_method_title` sem.
+- **Detalhe da linha no explorador de pedidos** (número do pedido, pagamento,
+  cupons, link de edição): `wc_get_order()`, só para os pedidos da página visível.
+- **Links**: `admin.php?page=wc-orders` com HPOS, `edit.php?post_type=shop_order` sem.
 
 ### Limitação conhecida
 
@@ -108,6 +159,13 @@ legenda **e** visão de tabela, e a alternância Gráfico/Tabela não é enfeite
 | Sequencial/ordinal | `#8fb9a8 #72a290 #598b78 #487363 #3b5b4f` | coorte, segmentos, ABC |
 | Série única | `#4A5E56` | barras nominais (produtos, categorias) |
 | Status | `#418261` alta (4.57:1) · `#B85C4A` baixa (4.50:1) | badges de variação |
+| Contexto (ênfase) | `#a9a398` período comparado | linha cinza do gráfico de evolução |
+
+O cinza do período comparado foi medido contra a série principal: ΔE **24.2** sob
+CVD e **25.7** em visão normal (alvo ≥ 8 / ≥ 15). Ele reprova de propósito no piso
+de chroma — é cinza porque é a forma "ênfase": a linha atual é a protagonista e a
+comparada é contexto. Fica em 2.44:1 sobre o branco, então o gráfico tem legenda,
+tooltip com os dois valores **e** visão de tabela.
 
 A rampa sequencial é a matiz 168.8° da marca, monotônica, com ΔL ≥ 0.06 entre
 passos e ponta clara em 2.17:1 — aprovada em todos os gates ordinais.
@@ -121,6 +179,8 @@ passos e ponta clara em 2.17:1 — aprovada em todos os gates ordinais.
 - **ABC usa a rampa invertida** (`ordinal: 'desc'`): a classe que concentra a
   receita tem de ser a mais escura, não a mais pálida.
 - **Status nunca vai só na cor** — cada badge carrega seta (▲/▼) e o número.
+  Em custo (descontos, reembolsos) a cor inverte — subir é ruim — mas a seta
+  continua dizendo a direção real.
 - **Eixo único.** Nenhum gráfico tem dois eixos Y.
 
 ## Arquivos
@@ -128,7 +188,9 @@ passos e ponta clara em 2.17:1 — aprovada em todos os gates ordinais.
 ```
 mv-analytics/
 ├── assets/dashboard.css   # Design System aplicado, tudo sob o prefixo .mv-an
-├── assets/dashboard.js    # SVG inline, sem biblioteca; hover, ordenação, CSV
+├── assets/dashboard.js    # SVG inline, sem biblioteca; hover, ordenação, CSV, AJAX
+├── includes/customers.php # ranking, estados, explorador e ficha do cliente
+├── includes/orders.php    # explorador de pedidos, cupons, formas de pagamento
 ├── preview.html           # dados fictícios, roda sem WordPress
 └── README.md
 ```

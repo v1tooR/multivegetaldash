@@ -106,7 +106,7 @@
 		<div class="mv-an-notice">
 			<span aria-hidden="true">⚠</span>
 			<span><strong>Pré-visualização com dados fictícios.</strong> Nenhum número desta
-			tela veio da loja — ela existe só para validar o visual e a leitura dos blocos
+			tela veio da loja (os exploradores de clientes e pedidos usam uma amostra gerada) — ela existe só para validar o visual e a leitura dos blocos
 			antes de ligar a camada de dados do WooCommerce.</span>
 		</div>
 
@@ -114,27 +114,43 @@
 
 		<div class="mv-an-tabs" role="tablist" aria-label="Seções do dashboard">
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p1" aria-controls="mv-p1">Visão geral</button>
+			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p5" aria-controls="mv-p5">Clientes</button>
+			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p6" aria-controls="mv-p6">Pedidos</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p2" aria-controls="mv-p2">Novos vs. Antigos</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p3" aria-controls="mv-p3">Produtos</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p4" aria-controls="mv-p4">Upselling</button>
 		</div>
 
-		<!-- ========== 1. VISÃO GERAL ========== -->
+		<!-- ===== 1. VISÃO GERAL ===== -->
 		<section class="mv-an-panel" id="mv-p1" role="tabpanel" tabindex="0">
-
 			<div class="mv-an-kpis" data-mv="kpis"></div>
 
 			<div class="mv-an-grid">
 				<div class="mv-an-col-12">
 					<div class="mv-an-card">
+						<div class="mv-an-card__head" data-mv="trend-toggle">
+							<h2 class="mv-an-card__title">Evolução das vendas</h2>
+							<p class="mv-an-card__hint">Linha cheia é o período selecionado; a cinza, o período de comparação alinhado dia a dia (ou semana a semana). A unidade acompanha o tamanho do período: hora, dia, semana ou mês — como no WooCommerce Analytics.</p>
+						</div>
+						<div class="mv-an-card__body">
+							<div class="mv-an-chartbar">
+								<div class="mv-an-seg" role="group" aria-label="Indicador do gráfico" data-mv="trend-metric"></div>
+								<div class="mv-an-legend mv-an-legend--inline">
+									<span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--s1"></i>Período atual</span>
+									<span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--prev"></i>Período comparado</span>
+								</div>
+							</div>
+							<div class="mv-an-chart" data-mv="trend-chart"></div>
+							<div data-mv="trend-table"></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
 						<div class="mv-an-card__head" data-mv="monthly-toggle">
-							<h2 class="mv-an-card__title">Receita por mês — novos vs. recorrentes</h2>
-							<p class="mv-an-card__hint">Um pedido conta como “novo” quando é a primeira
-							compra daquele cliente — a mesma marcação que o WooCommerce usa nos relatórios
-							nativos. O gráfico soma vendas totais (bruto, com frete e impostos), que é o card
-							“Vendas totais” de Analytics → Receita; “Vendas líquidas” é o mesmo valor sem
-							frete nem impostos. Confira sempre no mesmo período: os relatórios nativos abrem
-							em “Mês até hoje”, e este painel em “Últimos 12 meses”.</p>
+							<h2 class="mv-an-card__title">Receita — novos vs. recorrentes</h2>
+							<p class="mv-an-card__hint">Um pedido conta como “novo” quando é a primeira compra daquele cliente — a mesma marcação que o WooCommerce usa nos relatórios nativos. O gráfico soma vendas totais (bruto, com frete e impostos), que é o card “Vendas totais” de Analytics → Receita.</p>
 						</div>
 						<div class="mv-an-card__body">
 							<div class="mv-an-legend">
@@ -144,6 +160,109 @@
 							<div class="mv-an-chart" data-mv="monthly-chart"></div>
 							<div data-mv="monthly-table"></div>
 						</div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-7">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Quando os clientes compram</h2>
+							<p class="mv-an-card__hint">Pedidos por dia da semana e hora. Os horários mais escuros são a melhor janela para disparar e-mail, push ou campanha — e o pior momento para manutenção no site.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="heatmap"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-5">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Status dos pedidos</h2>
+							<p class="mv-an-card__hint">Todos os pedidos criados no período, inclusive os que o Analytics não soma (pendente, cancelado, malsucedido). Muito pedido parado ou cancelado costuma ser problema de pagamento ou de estoque.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="order-status"></div></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ===== 5. CLIENTES ===== -->
+		<section class="mv-an-panel" id="mv-p5" role="tabpanel" tabindex="0" hidden>
+			<div class="mv-an-grid">
+				<div class="mv-an-col-7">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head" data-mv="freq-toggle">
+							<h2 class="mv-an-card__title">Quantas vezes cada cliente já comprou</h2>
+							<p class="mv-an-card__hint">Clientes que compraram no período, separados pelo total de pedidos que já fizeram na loja. Quanto mais a massa se desloca para a direita, mais a receita depende de quem já é de casa.</p>
+						</div>
+						<div class="mv-an-card__body">
+							<div class="mv-an-chart" data-mv="freq-chart"></div>
+							<div data-mv="freq-table"></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-5">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Receita por estado</h2>
+							<p class="mv-an-card__hint">Pelo endereço do cadastro do cliente no WooCommerce.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="geo"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Melhores clientes do período</h2>
+							<p class="mv-an-card__hint">Clique no nome para abrir a ficha completa: todas as compras, produtos favoritos, intervalo entre pedidos e a próxima compra prevista.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="top-customers"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Base de clientes</h2>
+							<p class="mv-an-card__hint">Uma linha por cliente com o histórico completo — não só o período da tela. Busque por nome, e-mail, cidade ou ID; filtre por estágio para montar listas de reativação.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="customers-explorer"></div></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ===== 6. PEDIDOS ===== -->
+		<section class="mv-an-panel" id="mv-p6" role="tabpanel" tabindex="0" hidden>
+			<div class="mv-an-grid">
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Pedidos do período</h2>
+							<p class="mv-an-card__hint">Os mesmos pedidos que os totais da tela somaram, com os itens exatos de cada compra. “Compra nº” diz quantas vezes aquele cliente já comprou. Busque por número, cliente, e-mail ou produto; o número abre o pedido no WooCommerce.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="orders-explorer"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-6">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Formas de pagamento</h2>
+							<p class="mv-an-card__hint">Receita e ticket médio por meio de pagamento. Ticket muito maior num meio específico costuma indicar parcelamento — vale destacar na página do produto.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="payments"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-6">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Cupons</h2>
+							<p class="mv-an-card__hint">“1ª compra” é a fatia dos pedidos com o cupom que vieram de cliente novo. Cupom que só pega recorrente não está trazendo ninguém — está dando desconto a quem já compraria.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="coupons"></div></div>
 					</div>
 				</div>
 			</div>
@@ -286,6 +405,15 @@
 		</section>
 
 	</div>
+
+	<!-- Ficha do cliente: gaveta lateral preenchida sob demanda. -->
+	<div class="mv-an-drawer" data-mv="drawer" hidden>
+		<div class="mv-an-drawer__scrim" data-mv="drawer-close"></div>
+		<aside class="mv-an-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="mv-an-drawer-title" tabindex="-1">
+			<button type="button" class="mv-an-drawer__close" data-mv="drawer-close" aria-label="Fechar">×</button>
+			<div class="mv-an-drawer__body" data-mv="drawer-body"></div>
+		</aside>
+	</div>
 </div>
 
 <script>
@@ -426,6 +554,293 @@ window.MV_AN_DATA = {
 		{ customer: 'Fernanda Dias',   email: 'fernanda.dias@exemplo.com',   bought: 'Shampoo Jaborandi 300 ml',      suggest: 'Gel Fixador Aloe Vera 300 g',   reason: 'Co-compra · lift 1,44',            potential:  34.90 }
 	]
 };
+</script>
+<script>
+/* ============================================================
+   DADOS FICTÍCIOS DA v1.3 — série, mapa de calor, clientes,
+   pedidos — e o MV_AN_MOCK, que responde no lugar do AJAX do
+   WordPress para os exploradores e a ficha do cliente.
+
+   Gerador com semente fixa: o preview sai igual toda vez, então
+   uma mudança visual é sempre mudança de código, nunca de dado.
+   ============================================================ */
+( function () {
+	var D = window.MV_AN_DATA;
+	var seed = 20260906;
+	function rnd() { seed = ( seed * 16807 ) % 2147483647; return ( seed - 1 ) / 2147483646; }
+	function pick( a ) { return a[ Math.floor( rnd() * a.length ) ]; }
+	function r2( v ) { return Math.round( v * 100 ) / 100; }
+	var TODAY = new Date( 2026, 8, 6, 12 );
+	var DAY   = 864e5;
+	function fmtD( d ) { return ( '0' + d.getDate() ).slice( -2 ) + '/' + ( '0' + ( d.getMonth() + 1 ) ).slice( -2 ) + '/' + d.getFullYear(); }
+	function fmtDT( d ) { return fmtD( d ) + ' ' + ( '0' + d.getHours() ).slice( -2 ) + ':' + ( '0' + d.getMinutes() ).slice( -2 ); }
+
+	D.meta.dateType = 'data de pagamento';
+
+	/* ---- Série mensal com o período comparado (ano anterior) ---- */
+	var rows = D.monthly.map( function ( m ) {
+		var rev = m.s1 + m.s2, net = Math.round( rev * 0.878 ), orders = Math.round( rev / 154.6 );
+		var p = 0.8 + rnd() * 0.12;
+		return {
+			label: m.label, revenue: rev, net: net, orders: orders,
+			customers: Math.round( orders * 0.83 ), newCustomers: Math.round( orders * m.s2 / rev * 0.95 ),
+			s1: m.s1, s2: m.s2,
+			prevLabel: m.label.replace( /\d\d$/, function ( y ) { return String( +y - 1 ); } ),
+			prev: { revenue: Math.round( rev * p ), net: Math.round( net * p ), orders: Math.round( orders * ( p + 0.05 ) ) }
+		};
+	} );
+	D.series = { granularity: 'month', unit: 'mês', rows: rows };
+	delete D.monthly;
+
+	function col( k ) { return rows.map( function ( r ) { return r[ k ]; } ); }
+
+	D.kpis = [
+		{ label: 'Vendas totais',          value: 'R$ 1,31 mi', exact: 'R$ 1.310.000,00', delta: 18.4, spark: col( 'revenue' ) },
+		{ label: 'Vendas líquidas',        value: 'R$ 1,15 mi', exact: 'R$ 1.150.180,00', delta: 17.2, spark: col( 'net' ) },
+		{ label: 'Pedidos',                value: '8.472',  delta: 12.1, spark: col( 'orders' ) },
+		{ label: 'Ticket médio',           value: 'R$ 135,74', delta: 4.6,
+			spark: rows.map( function ( r ) { return r.net / r.orders; } ) },
+		{ label: 'Clientes únicos',        value: '5.914',  delta: 9.8, spark: col( 'customers' ) },
+		{ label: 'Novos clientes',         value: '2.231',  delta: 6.3, spark: col( 'newCustomers' ) },
+		{ label: 'Receita de recorrentes', value: '70,2', unit: '%', delta: 4.3 },
+		{ label: 'Taxa de recompra',       value: '31,4', unit: '%', delta: -2.9 },
+		{ label: 'Itens por pedido',       value: '2,4',  delta: 3.1 },
+		{ label: 'Frete cobrado',          value: 'R$ 98 mil',  exact: 'R$ 98.410,00', delta: 11.0 },
+		{ label: 'Descontos em cupons',    value: 'R$ 41 mil',  exact: 'R$ 41.270,00', delta: 22.5, invert: true },
+		{ label: 'Reembolsos',             value: 'R$ 6.840',   exact: 'R$ 6.840,00',  delta: -14.2, invert: true }
+	];
+
+	/* ---- Dia × hora: picos no fim da manhã e à noite ---- */
+	var dayW = [ 1.0, 1.05, 1.0, 1.12, 0.92, 0.62, 0.78 ];
+	D.heatmap = [ 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom' ].map( function ( l, d ) {
+		var cells = [], money = [];
+		for ( var h = 0; h < 24; h++ ) {
+			var base = Math.exp( -Math.pow( h - 11, 2 ) / 8 ) * 0.7 + Math.exp( -Math.pow( h - 20.5, 2 ) / 6 ) + 0.04;
+			var n = Math.round( base * dayW[ d ] * 92 * ( 0.85 + rnd() * 0.3 ) );
+			cells.push( n );
+			money.push( Math.round( n * 154.6 ) );
+		}
+		return { label: l, cells: cells, revenue: money };
+	} );
+
+	D.orderStatus = [
+		{ status: 'wc-completed',  label: 'Concluído',          orders: 7811, revenue: 1208400, pct: 86.4, counted: true },
+		{ status: 'wc-processing', label: 'Processando',        orders: 512,  revenue: 79100,   pct: 5.7,  counted: true },
+		{ status: 'wc-cancelled',  label: 'Cancelado',          orders: 318,  revenue: 47800,   pct: 3.5,  counted: false },
+		{ status: 'wc-failed',     label: 'Malsucedido',        orders: 201,  revenue: 30200,   pct: 2.2,  counted: false },
+		{ status: 'wc-on-hold',    label: 'Aguardando',         orders: 97,   revenue: 15300,   pct: 1.1,  counted: true },
+		{ status: 'wc-refunded',   label: 'Reembolsado',        orders: 52,   revenue: 7200,    pct: 0.6,  counted: true },
+		{ status: 'wc-pending',    label: 'Pagamento pendente', orders: 41,   revenue: 6100,    pct: 0.5,  counted: false }
+	];
+
+	/* Fecha nos 5.914 clientes únicos dos KPIs. */
+	D.frequency = [
+		{ label: '1',   customers: 2231, pct: 37.7, spent: 263300,  avgSpent: 118.02 },
+		{ label: '2',   customers: 1296, pct: 21.9, spent: 342100,  avgSpent: 263.97 },
+		{ label: '3',   customers: 812,  pct: 13.7, spent: 318900,  avgSpent: 392.73 },
+		{ label: '4',   customers: 521,  pct: 8.8,  spent: 273200,  avgSpent: 524.38 },
+		{ label: '5',   customers: 344,  pct: 5.8,  spent: 224800,  avgSpent: 653.49 },
+		{ label: '6–9', customers: 498,  pct: 8.4,  spent: 452600,  avgSpent: 908.84 },
+		{ label: '10+', customers: 212,  pct: 3.6,  spent: 341900,  avgSpent: 1612.74 }
+	];
+
+	D.geo = [
+		{ label: 'São Paulo',          customers: 2304, orders: 3318, revenue: 512800 },
+		{ label: 'Minas Gerais',       customers: 812,  orders: 1162, revenue: 181300 },
+		{ label: 'Rio de Janeiro',     customers: 744,  orders: 1041, revenue: 160900 },
+		{ label: 'Paraná',             customers: 466,  orders: 671,  revenue: 104200 },
+		{ label: 'Rio Grande do Sul',  customers: 401,  orders: 577,  revenue: 88600 },
+		{ label: 'Santa Catarina',     customers: 352,  orders: 498,  revenue: 77900 },
+		{ label: 'Bahia',              customers: 288,  orders: 389,  revenue: 58200 },
+		{ label: 'Goiás',              customers: 181,  orders: 252,  revenue: 38700 }
+	];
+
+	D.payments = [
+		{ label: 'Pix',                orders: 4412, revenue: 594100, ticket: 134.66, share: 45.4 },
+		{ label: 'Cartão de crédito',  orders: 3502, revenue: 638900, ticket: 182.44, share: 48.8 },
+		{ label: 'Boleto',             orders: 558,  revenue: 77000,  ticket: 137.99, share: 5.9 }
+	];
+
+	D.coupons = [
+		{ code: 'BEMVINDO10', orders: 1184, discount: 14200, revenue: 136900, ticket: 115.62, firstPct: 92.4 },
+		{ code: 'FRETEGRATIS', orders: 862, discount: 12900, revenue: 151400, ticket: 175.64, firstPct: 31.8 },
+		{ code: 'VOLTA15',    orders: 391,  discount: 8700,  revenue: 64100,  ticket: 163.94, firstPct: 4.1 },
+		{ code: 'BLACK20',    orders: 214,  discount: 5470,  revenue: 30800,  ticket: 143.93, firstPct: 38.3 }
+	];
+
+	/* ---- Amostra de clientes e pedidos para os exploradores ---- */
+	var FIRST = [ 'Ana', 'Bruno', 'Carla', 'Daniel', 'Elisa', 'Fábio', 'Gabriela', 'Henrique', 'Isabela', 'João', 'Larissa', 'Marcos', 'Natália', 'Otávio', 'Paula', 'Rafael', 'Sofia', 'Tiago', 'Vanessa', 'Yuri', 'Juliana', 'Ricardo', 'Fernanda', 'Paulo', 'Marina' ];
+	var LAST  = [ 'Silva', 'Souza', 'Costa', 'Oliveira', 'Pereira', 'Lima', 'Carvalho', 'Ribeiro', 'Almeida', 'Nunes', 'Tavares', 'Martins', 'Dias', 'Alves', 'Rocha' ];
+	var CITY  = [ [ 'São Paulo', 'SP' ], [ 'Campinas', 'SP' ], [ 'Santos', 'SP' ], [ 'Belo Horizonte', 'MG' ], [ 'Rio de Janeiro', 'RJ' ], [ 'Niterói', 'RJ' ], [ 'Curitiba', 'PR' ], [ 'Porto Alegre', 'RS' ], [ 'Florianópolis', 'SC' ], [ 'Salvador', 'BA' ], [ 'Goiânia', 'GO' ] ];
+	var PROD  = D.topProducts.map( function ( p ) { return { name: p.name, price: r2( p.revenue / p.qty ) }; } );
+	var PAY   = [ 'Pix', 'Pix', 'Cartão de crédito', 'Cartão de crédito', 'Boleto' ];
+	var ST    = [ 'wc-completed', 'wc-completed', 'wc-completed', 'wc-completed', 'wc-completed', 'wc-completed', 'wc-processing', 'wc-on-hold' ];
+	var STL   = { 'wc-completed': 'Concluído', 'wc-processing': 'Processando', 'wc-on-hold': 'Aguardando' };
+	var SEGL  = { novo: 'Novo', rec: 'Recorrente', fiel: 'Fiel', risco: 'Em risco', inativo: 'Inativo' };
+
+	var customers = [], orders = [], oid = 48210;
+	for ( var i = 0; i < 180; i++ ) {
+		var fn = pick( FIRST ), ln = pick( LAST ), city = pick( CITY );
+		var x = rnd();
+		var n = x < 0.45 ? 1 : x < 0.68 ? 2 : x < 0.8 ? 3 : x < 0.88 ? 4 : x < 0.94 ? 6 : 11;
+		var firstAgo = Math.floor( 20 + rnd() * 700 );
+		var gap = n > 1 ? Math.max( 12, Math.floor( ( firstAgo - rnd() * firstAgo * 0.5 ) / ( n - 1 ) ) ) : 0;
+		var c = {
+			id: 1000 + i, name: fn + ' ' + ln,
+			email: ( fn + '.' + ln + ( i % 7 ? '' : i ) ).toLowerCase().normalize( 'NFD' ).replace( /[̀-ͯ]/g, '' ) + '@exemplo.com',
+			city: city[ 0 ], state: city[ 1 ], guest: rnd() < 0.2, orders: []
+		};
+		for ( var k = 0; k < n; k++ ) {
+			var ago = Math.max( 0, firstAgo - gap * k - Math.floor( rnd() * 5 ) );
+			var d = new Date( TODAY.getTime() - ago * DAY );
+			d.setHours( pick( [ 9, 10, 11, 12, 14, 19, 20, 21, 22 ] ), Math.floor( rnd() * 60 ) );
+			if ( d > TODAY ) d = new Date( TODAY.getTime() - 36e5 );
+			var lines = [], nl = 1 + Math.floor( rnd() * 3 ), used = {};
+			for ( var j = 0; j < nl; j++ ) {
+				var p = pick( PROD );
+				if ( used[ p.name ] ) continue;
+				used[ p.name ] = 1;
+				var q = 1 + ( rnd() < 0.25 ? 1 : 0 );
+				lines.push( { name: p.name, qty: q, net: r2( p.price * q ), gross: r2( p.price * q * 1.06 ) } );
+			}
+			var net = lines.reduce( function ( a, l ) { return a + l.net; }, 0 );
+			var ship = net > 199 ? 0 : 18.9;
+			var cp = rnd() < 0.15 ? ( k === 0 ? 'BEMVINDO10' : 'VOLTA15' ) : null;
+			var disc = cp ? r2( net * 0.1 ) : 0;
+			var st = pick( ST );
+			var o = {
+				id: oid++, ts: d.getTime(), date: fmtDT( d ), status: st, statusLbl: STL[ st ],
+				customerId: c.id, customer: c.name, email: c.email, location: c.city + ' / ' + c.state,
+				returning: k > 0, items: lines.reduce( function ( a, l ) { return a + l.qty; }, 0 ),
+				net: r2( net - disc ), shipping: ship, tax: 0, discount: disc, coupons: cp ? [ cp ] : [],
+				total: r2( net - disc + ship ), lines: lines, payment: pick( PAY ), url: '#pedido-' + ( oid - 1 )
+			};
+			o.number = String( o.id );
+			c.orders.push( o );
+			orders.push( o );
+		}
+		c.orders.sort( function ( a, b ) { return b.ts - a.ts; } );
+		var cnt = c.orders.length;
+		c.spent = r2( c.orders.reduce( function ( a, o ) { return a + o.total; }, 0 ) );
+		c.items = c.orders.reduce( function ( a, o ) { return a + o.items; }, 0 );
+		c.firstTs = c.orders[ cnt - 1 ].ts;
+		c.lastTs  = c.orders[ 0 ].ts;
+		c.days = Math.round( ( new Date( TODAY ).setHours( 0, 0, 0, 0 ) - new Date( c.lastTs ).setHours( 0, 0, 0, 0 ) ) / DAY );
+		c.interval = cnt > 1 ? Math.round( ( c.lastTs - c.firstTs ) / DAY / ( cnt - 1 ) ) : null;
+		c.segment = c.days > 180 ? 'inativo' : c.days > 90 ? 'risco' : cnt >= 4 ? 'fiel' : cnt >= 2 ? 'rec' : 'novo';
+		c.orders.forEach( function ( o ) { o.lifeOrders = cnt; } );
+		customers.push( c );
+	}
+
+	/* Período da tela no preview: últimos 12 meses. */
+	var PSTART = new Date( 2025, 9, 1 ).getTime();
+	function inPeriod( o ) { return o.ts >= PSTART; }
+
+	function row( c ) {
+		var po = c.orders.filter( inPeriod );
+		return {
+			id: c.id, name: c.name, email: c.email, city: c.city, state: c.state,
+			orders: c.orders.length, spent: c.spent, avg: r2( c.spent / c.orders.length ), items: c.items,
+			first: fmtD( new Date( c.firstTs ) ), last: fmtD( new Date( c.lastTs ) ), days: c.days, interval: c.interval,
+			periodOrders: po.length, periodSpent: r2( po.reduce( function ( a, o ) { return a + o.total; }, 0 ) ),
+			segment: c.segment, segLabel: SEGL[ c.segment ], _first: c.firstTs, _last: c.lastTs
+		};
+	}
+
+	D.topCustomers = customers.map( row ).sort( function ( a, b ) { return b.periodSpent - a.periodSpent; } ).slice( 0, 10 ).map( function ( r ) {
+		return { id: r.id, name: r.name, email: r.email, location: r.city + ' / ' + r.state, orders: r.periodOrders,
+			revenue: r.periodSpent, lifeOrders: r.orders, lifeSpent: r.spent, last: r.last, segment: r.segment, segLabel: r.segLabel };
+	} );
+
+	/* A lista acionável passa a abrir a ficha: aponta para clientes da amostra. */
+	D.opportunities.forEach( function ( o, i ) { o.customerId = customers[ i * 7 ].id; o.customer = customers[ i * 7 ].name; o.email = customers[ i * 7 ].email; } );
+
+	function like( v, q ) { return String( v ).toLowerCase().indexOf( q ) !== -1; }
+	function page( list, p ) {
+		var per = +p.per || 25, pg = +p.page || 1;
+		return { rows: list.slice( ( pg - 1 ) * per, pg * per ), page: pg, per: per, total: list.length };
+	}
+
+	window.MV_AN_MOCK = function ( action, p ) {
+		var q = ( p.q || '' ).toLowerCase();
+
+		if ( action === 'mv_an_customers' ) {
+			var list = customers.map( row ).filter( function ( r ) {
+				if ( p.scope === 'period' && ! r.periodOrders ) return false;
+				if ( p.segment && r.segment !== p.segment ) return false;
+				return ! q || like( r.name, q ) || like( r.email, q ) || like( r.city, q ) || String( r.id ) === q;
+			} );
+			var sorts = {
+				spent: function ( a, b ) { return b.spent - a.spent; },
+				orders: function ( a, b ) { return b.orders - a.orders || b.spent - a.spent; },
+				last: function ( a, b ) { return b._last - a._last; },
+				first: function ( a, b ) { return a._first - b._first; },
+				name: function ( a, b ) { return a.name.localeCompare( b.name, 'pt-BR' ); },
+				period: function ( a, b ) { return b.periodSpent - a.periodSpent; }
+			};
+			list.sort( sorts[ p.sort ] || sorts.spent );
+			var res = page( list, p );
+			res.spent  = r2( list.reduce( function ( a, r ) { return a + r.spent; }, 0 ) );
+			res.orders = list.reduce( function ( a, r ) { return a + r.orders; }, 0 );
+			return res;
+		}
+
+		if ( action === 'mv_an_orders' ) {
+			var ol = orders.filter( inPeriod ).filter( function ( o ) {
+				if ( p.status && o.status !== p.status ) return false;
+				if ( p.type === 'new' && o.returning ) return false;
+				if ( p.type === 'returning' && ! o.returning ) return false;
+				return ! q || String( o.id ) === q.replace( '#', '' ) || like( o.customer, q ) || like( o.email, q ) ||
+					o.lines.some( function ( l ) { return like( l.name, q ); } );
+			} );
+			var os = { date: function ( a, b ) { return b.ts - a.ts; }, total: function ( a, b ) { return b.total - a.total; }, items: function ( a, b ) { return b.items - a.items; } };
+			ol.sort( os[ p.sort ] || os.date );
+			var r = page( ol, p );
+			r.revenue = r2( ol.reduce( function ( a, o ) { return a + o.total; }, 0 ) );
+			r.items   = ol.reduce( function ( a, o ) { return a + o.items; }, 0 );
+			return r;
+		}
+
+		if ( action === 'mv_an_customer' ) {
+			var c = customers.filter( function ( x ) { return x.id === +p.id; } )[ 0 ];
+			if ( ! c ) return null;
+			var cr = row( c );
+			var prod = {};
+			c.orders.forEach( function ( o ) {
+				o.lines.forEach( function ( l ) {
+					var e = prod[ l.name ] || ( prod[ l.name ] = { name: l.name, qty: 0, orders: 0, revenue: 0, last: o.date.slice( 0, 10 ) } );
+					e.qty += l.qty; e.orders++; e.revenue = r2( e.revenue + l.net );
+				} );
+			} );
+			var monthly = [], by = {};
+			c.orders.forEach( function ( o ) { var d = new Date( o.ts ), k = d.getFullYear() * 12 + d.getMonth(); by[ k ] = r2( ( by[ k ] || 0 ) + o.total ); } );
+			var endK = TODAY.getFullYear() * 12 + TODAY.getMonth();
+			var f0 = new Date( c.firstTs ), startK = Math.max( f0.getFullYear() * 12 + f0.getMonth(), endK - 23 );
+			var MES = [ 'jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez' ];
+			for ( var mk = startK; mk <= endK; mk++ ) monthly.push( { label: MES[ mk % 12 ] + '/' + String( Math.floor( mk / 12 ) ).slice( 2 ), s1: by[ mk ] || 0 } );
+			var cps = {};
+			c.orders.forEach( function ( o ) { o.coupons.forEach( function ( k ) { var e = cps[ k ] || ( cps[ k ] = { code: k, orders: 0, discount: 0 } ); e.orders++; e.discount = r2( e.discount + o.discount ); } ); } );
+			var next = c.interval ? new Date( c.lastTs + c.interval * DAY ) : null;
+			return {
+				id: c.id, name: c.name, email: c.email, username: '', guest: c.guest,
+				location: c.city + ' · ' + c.state, registered: c.guest ? '' : fmtD( new Date( c.firstTs - 2 * DAY ) ),
+				segment: c.segment, segLabel: SEGL[ c.segment ],
+				stats: {
+					orders: cr.orders, spent: cr.spent, net: r2( cr.spent * 0.9 ), avg: cr.avg, items: cr.items, refunds: 0,
+					first: cr.first, last: cr.last, days: cr.days, interval: cr.interval,
+					next: next ? fmtD( next ) : null,
+					rhythm: ! c.interval ? null : cr.days <= c.interval ? 'ok' : cr.days <= c.interval * 1.5 ? 'due' : 'late'
+				},
+				monthly: monthly,
+				products: Object.keys( prod ).map( function ( k ) { return prod[ k ]; } ).sort( function ( a, b ) { return b.orders - a.orders || b.revenue - a.revenue; } ),
+				coupons: Object.keys( cps ).map( function ( k ) { return cps[ k ]; } ),
+				orders: c.orders,
+				links: [ { label: 'Pedidos no WooCommerce', url: '#' }, { label: 'Ver no Analytics', url: '#' } ]
+			};
+		}
+		return null;
+	};
+} )();
 </script>
 <script src="assets/dashboard.js"></script>
 </body>

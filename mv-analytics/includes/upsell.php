@@ -379,6 +379,7 @@ function mv_an_opportunities( $range, $args, $basket = [], $gaps = [] ) {
 		}
 
 		$out[] = [
+			'customerId'=> $cid,
 			'customer'  => $info[ $cid ]['name'],
 			'email'     => $info[ $cid ]['email'],
 			'bought'    => $r['bought'],

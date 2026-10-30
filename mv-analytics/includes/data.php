@@ -20,10 +20,84 @@ function mv_an_tables() {
 		'products' => $wpdb->prefix . 'wc_order_product_lookup',
 		'customers'=> $wpdb->prefix . 'wc_customer_lookup',
 		'coupons'  => $wpdb->prefix . 'wc_order_coupon_lookup',
+		'hpos'     => $wpdb->prefix . 'wc_orders',
 		'tr'       => $wpdb->term_relationships,
 		'tt'       => $wpdb->term_taxonomy,
 		'terms'    => $wpdb->terms,
 	];
+}
+
+/* ---------------------------------------------------------------
+   Compatibilidade com o WooCommerce
+--------------------------------------------------------------- */
+
+/**
+ * Coluna de data usada para recortar o período.
+ *
+ * O WooCommerce Analytics não filtra por data de criação: ele lê a
+ * opção "Tipo de data" (Analytics → Configurações), que por padrão é a
+ * data de PAGAMENTO. Recortar por date_created fazia pedidos criados
+ * num dia e pagos no outro caírem em períodos diferentes nos dois
+ * painéis. Ler a mesma opção elimina essa fonte de divergência.
+ */
+function mv_an_date_col() {
+	$type = get_option( 'woocommerce_date_type', 'date_paid' );
+	return in_array( $type, [ 'date_created', 'date_paid', 'date_completed' ], true ) ? $type : 'date_created';
+}
+
+function mv_an_date_col_label() {
+	$map = [
+		'date_created'   => __( 'data de criação', 'mv-analytics' ),
+		'date_paid'      => __( 'data de pagamento', 'mv-analytics' ),
+		'date_completed' => __( 'data de conclusão', 'mv-analytics' ),
+	];
+	return $map[ mv_an_date_col() ];
+}
+
+/** Tabelas de pedidos de alto desempenho (HPOS) em uso? */
+function mv_an_hpos() {
+	return class_exists( \Automattic\WooCommerce\Utilities\OrderUtil::class )
+		&& \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled();
+}
+
+/** Link de edição do pedido, nas duas telas possíveis do WooCommerce. */
+function mv_an_order_url( $order_id ) {
+	$order_id = (int) $order_id;
+	return mv_an_hpos()
+		? admin_url( 'admin.php?page=wc-orders&action=edit&id=' . $order_id )
+		: admin_url( 'post.php?post=' . $order_id . '&action=edit' );
+}
+
+/** Lista de pedidos do WooCommerce já filtrada por um cliente. */
+function mv_an_customer_orders_url( $user_id, $email ) {
+	$base = mv_an_hpos() ? admin_url( 'admin.php?page=wc-orders' ) : admin_url( 'edit.php?post_type=shop_order' );
+	/* Cliente registrado filtra pelo usuário; convidado só tem o e-mail. */
+	if ( $user_id ) {
+		return add_query_arg( '_customer_user', (int) $user_id, $base );
+	}
+	return $email ? add_query_arg( 's', rawurlencode( $email ), $base ) : '';
+}
+
+/** Rótulo de status do WooCommerce ("wc-completed" → "Concluído"). */
+function mv_an_status_labels() {
+	$map = function_exists( 'wc_get_order_statuses' ) ? wc_get_order_statuses() : [];
+	$out = [];
+	foreach ( $map as $k => $v ) {
+		$out[ $k ] = $v;
+	}
+	return $out;
+}
+
+/** Nome do estado a partir da sigla, pela lista do próprio WooCommerce. */
+function mv_an_state_name( $country, $state ) {
+	if ( '' === (string) $state ) return __( 'Não informado', 'mv-analytics' );
+	if ( function_exists( 'WC' ) && WC()->countries ) {
+		$states = WC()->countries->get_states( $country ? $country : 'BR' );
+		if ( is_array( $states ) && isset( $states[ $state ] ) ) {
+			return $states[ $state ];
+		}
+	}
+	return $state;
 }
 
 function mv_an_table_exists( $table ) {
@@ -215,21 +289,156 @@ function mv_an_fmt_date( $sql_date ) {
 }
 
 /* ---------------------------------------------------------------
+   Granularidade dos gráficos de evolução
+
+   Agrupar sempre por mês deixava "Últimos 30 dias" com uma ou duas
+   barras. A unidade agora acompanha o tamanho do período, como no
+   WooCommerce Analytics: hora, dia, semana ou mês.
+--------------------------------------------------------------- */
+function mv_an_granularity( $range ) {
+	$days = ( $range['end_ts'] - $range['start_ts'] + 1 ) / DAY_IN_SECONDS;
+	if ( $days <= 1.01 ) return 'hour';
+	if ( $days <= 45 )   return 'day';
+	if ( $days <= 120 )  return 'week';
+	return 'month';
+}
+
+/**
+ * Formatos casados: a chave do PHP precisa sair idêntica à do
+ * DATE_FORMAT do MySQL. Semana usa a ISO (segunda a domingo) nos dois:
+ * %x-%v no MySQL, o-W no PHP. Os "%%" são o escape do $wpdb->prepare.
+ */
+function mv_an_bucket_formats( $gran ) {
+	$map = [
+		'hour'  => [ 'sql' => '%%Y-%%m-%%d %%H', 'php' => 'Y-m-d H', 'label' => 'H\h' ],
+		'day'   => [ 'sql' => '%%Y-%%m-%%d',     'php' => 'Y-m-d',   'label' => 'd/m' ],
+		'week'  => [ 'sql' => '%%x-%%v',         'php' => 'o-W',     'label' => 'd/m' ],
+		'month' => [ 'sql' => '%%Y-%%m',         'php' => 'Y-m',     'label' => 'M/y' ],
+	];
+	return $map[ $gran ];
+}
+
+/** Lista contínua de baldes entre dois instantes — inclusive os vazios. */
+function mv_an_buckets( $start_ts, $end_ts, $gran ) {
+	$f   = mv_an_bucket_formats( $gran );
+	$out = [];
+
+	switch ( $gran ) {
+		case 'hour':  $cur = strtotime( gmdate( 'Y-m-d H:00:00', $start_ts ) ); $step = '+1 hour'; break;
+		case 'week':  $cur = strtotime( 'monday this week', strtotime( 'today', $start_ts ) ); $step = '+1 week'; break;
+		case 'month': $cur = strtotime( gmdate( 'Y-m-01 00:00:00', $start_ts ) ); $step = '+1 month'; break;
+		default:      $cur = strtotime( 'today', $start_ts ); $step = '+1 day';
+	}
+
+	$guard = 0;
+	while ( $cur <= $end_ts && $guard++ < 400 ) {
+		$label = date_i18n( $f['label'], $cur );
+		$out[] = [
+			'key'   => gmdate( $f['php'], $cur ),
+			'label' => 'month' === $gran ? mb_strtolower( $label ) : $label,
+			'ts'    => $cur,
+		];
+		$cur = strtotime( $step, $cur );
+	}
+	return $out;
+}
+
+/** Segmento de relacionamento — a MESMA regra do quadro de estágios. */
+function mv_an_segment_key( $orders, $days ) {
+	if ( $days > 180 ) return 'inativo';
+	if ( $days > 90 )  return 'risco';
+	if ( $orders >= 4 ) return 'fiel';
+	if ( $orders >= 2 ) return 'rec';
+	return 'novo';
+}
+
+function mv_an_segment_labels() {
+	return [
+		'novo'    => __( 'Novo', 'mv-analytics' ),
+		'rec'     => __( 'Recorrente', 'mv-analytics' ),
+		'fiel'    => __( 'Fiel', 'mv-analytics' ),
+		'risco'   => __( 'Em risco', 'mv-analytics' ),
+		'inativo' => __( 'Inativo', 'mv-analytics' ),
+	];
+}
+
+/* ---------------------------------------------------------------
+   Perfil de clientes em lote: identidade + histórico de vida inteira
+
+   "Quantas vezes comprou" é sempre o histórico completo do cliente,
+   nunca só o período da tela — é o número que o atendimento precisa.
+--------------------------------------------------------------- */
+function mv_an_customer_profiles( $ids ) {
+	global $wpdb;
+	$t   = mv_an_tables();
+	$ids = array_values( array_unique( array_filter( array_map( 'intval', (array) $ids ) ) ) );
+	if ( ! $ids ) return [];
+
+	$statuses = mv_an_statuses();
+	$phs      = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+	$in       = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
+	$today    = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp' ) );
+	$has_c    = mv_an_table_exists( $t['customers'] );
+
+	$sql = 'SELECT a.customer_id, a.n, a.spent, a.first_date, a.last_date, DATEDIFF(%s, a.last_date) AS days'
+		. ( $has_c ? ', c.first_name, c.last_name, c.email, c.city, c.state, c.country, c.user_id' : '' )
+		. ' FROM ( SELECT customer_id,'
+		. '   SUM(CASE WHEN parent_id = 0 THEN 1 ELSE 0 END) AS n,'
+		. '   COALESCE(SUM(total_sales),0) AS spent,'
+		. '   MIN(CASE WHEN parent_id = 0 THEN date_created END) AS first_date,'
+		. '   MAX(CASE WHEN parent_id = 0 THEN date_created END) AS last_date'
+		. '   FROM `' . esc_sql( $t['stats'] ) . "` WHERE status IN ( $phs ) AND customer_id IN ( $in )"
+		. '   GROUP BY customer_id ) a'
+		. ( $has_c ? ' LEFT JOIN `' . esc_sql( $t['customers'] ) . '` c ON c.customer_id = a.customer_id' : '' );
+
+	$rows = $wpdb->get_results( $wpdb->prepare( $sql, array_merge( [ $today ], $statuses, $ids ) ), ARRAY_A );
+
+	$labels = mv_an_segment_labels();
+	$out    = [];
+	foreach ( (array) $rows as $r ) {
+		$name = trim( ( isset( $r['first_name'] ) ? $r['first_name'] : '' ) . ' ' . ( isset( $r['last_name'] ) ? $r['last_name'] : '' ) );
+		$seg  = mv_an_segment_key( (int) $r['n'], (int) $r['days'] );
+		$out[ (int) $r['customer_id'] ] = [
+			'id'       => (int) $r['customer_id'],
+			'name'     => '' !== $name ? $name : __( 'Cliente sem nome', 'mv-analytics' ),
+			'email'    => isset( $r['email'] ) ? (string) $r['email'] : '',
+			'city'     => isset( $r['city'] ) ? (string) $r['city'] : '',
+			'state'    => isset( $r['state'] ) ? (string) $r['state'] : '',
+			'orders'   => (int) $r['n'],
+			'spent'    => round( (float) $r['spent'], 2 ),
+			'first'    => mv_an_fmt_date( $r['first_date'] ),
+			'last'     => mv_an_fmt_date( $r['last_date'] ),
+			'days'     => (int) $r['days'],
+			'segment'  => $seg,
+			'segLabel' => $labels[ $seg ],
+		];
+	}
+	return $out;
+}
+
+/* ---------------------------------------------------------------
    Cláusula WHERE reaproveitada por todos os blocos
 
    Devolve SQL + parâmetros na ordem, para alimentar $wpdb->prepare.
    O alias da tabela wc_order_stats é sempre "s".
 --------------------------------------------------------------- */
-function mv_an_where( $range, $args, $use_prev = false ) {
-	$t        = mv_an_tables();
-	$statuses = mv_an_statuses();
-	$ph       = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+/*
+ * $opt['col']      — força outra coluna de data (o padrão é a do Analytics);
+ * $opt['statuses'] — false para não filtrar status (quadro de status).
+ */
+function mv_an_where( $range, $args, $use_prev = false, $opt = [] ) {
+	$t   = mv_an_tables();
+	$col = isset( $opt['col'] ) && in_array( $opt['col'], [ 'date_created', 'date_paid', 'date_completed' ], true )
+		? $opt['col'] : mv_an_date_col();
 
-	$sql    = ' s.date_created >= %s AND s.date_created <= %s AND s.status IN (' . $ph . ')';
-	$params = array_merge(
-		[ $use_prev ? $range['prev_start'] : $range['start'], $use_prev ? $range['prev_end'] : $range['end'] ],
-		$statuses
-	);
+	$sql    = ' s.' . $col . ' >= %s AND s.' . $col . ' <= %s';
+	$params = [ $use_prev ? $range['prev_start'] : $range['start'], $use_prev ? $range['prev_end'] : $range['end'] ];
+
+	if ( ! isset( $opt['statuses'] ) || false !== $opt['statuses'] ) {
+		$statuses = mv_an_statuses();
+		$sql     .= ' AND s.status IN (' . implode( ',', array_fill( 0, count( $statuses ), '%s' ) ) . ')';
+		$params   = array_merge( $params, $statuses );
+	}
 
 	if ( ! empty( $args['category'] ) ) {
 		$sql .= ' AND EXISTS ( SELECT 1 FROM `' . esc_sql( $t['products'] ) . '` pl2'
@@ -292,6 +501,7 @@ function mv_an_cache_key( $args ) {
 	return 'mv_an_snap_' . md5( wp_json_encode( [
 		$args,
 		mv_an_statuses(),
+		mv_an_date_col(),
 		MV_AN_VERSION,
 		/* Reparte o cache por dia: um snapshot de ontem não serve. */
 		current_time( 'Y-m-d' ),
@@ -337,6 +547,7 @@ function mv_an_build_view_data( $args ) {
 			'previous' => mv_an_fmt_date( $range['prev_start'] ) . ' – ' . mv_an_fmt_date( $range['prev_end'] )
 				. ( isset( $modes[ $cmp ] ) ? ' (' . str_replace( 'vs. ', '', $modes[ $cmp ] ) . ')' : '' ),
 			'statuses' => mv_an_statuses_label(),
+			'dateType' => mv_an_date_col_label(),
 			'updated'  => date_i18n( 'd/m/Y H:i', current_time( 'timestamp' ) ),
 		],
 		'state'      => $status,
@@ -353,10 +564,18 @@ function mv_an_build_view_data( $args ) {
 	   ela não refaz as consultas, reaproveita o que já foi ranqueado. */
 	$basket = mv_an_basket( $range, $args );
 	$gaps   = mv_an_category_gaps( $args, $range );
+	$series = mv_an_series( $range, $args );
 
 	return array_merge( $base, [
-		'kpis'          => mv_an_kpis( $range, $args ),
-		'monthly'       => mv_an_monthly( $range, $args ),
+		'kpis'          => mv_an_kpis( $range, $args, $series ),
+		'series'        => $series,
+		'heatmap'       => mv_an_heatmap( $range, $args ),
+		'orderStatus'   => mv_an_status_breakdown( $range, $args ),
+		'frequency'     => mv_an_frequency( $range, $args ),
+		'geo'           => mv_an_geo( $range, $args ),
+		'topCustomers'  => mv_an_top_customers( $range, $args ),
+		'coupons'       => mv_an_coupons( $range, $args ),
+		'payments'      => mv_an_payments( $range, $args ),
 		'compare'       => mv_an_compare( $range, $args ),
 		'cohort'        => mv_an_cohort( $args ),
 		'segments'      => mv_an_segments( $args ),

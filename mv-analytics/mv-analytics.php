@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Multivegetal Analytics
  * Description: Painel de análise de clientes, vendas e oportunidades de upselling para a loja WooCommerce da Multi Vegetal, seguindo o Design System Multivegetal.
- * Version:     1.2.0
+ * Version:     1.3.0
  * Author:      Multivegetal
  * Text Domain: mv-analytics
  * Requires PHP: 7.2
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MV_AN_VERSION', '1.2.0' );
+define( 'MV_AN_VERSION', '1.3.0' );
 define( 'MV_AN_FILE', __FILE__ );
 define( 'MV_AN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MV_AN_URL', plugin_dir_url( __FILE__ ) );
@@ -33,6 +33,8 @@ function mv_an_required_files() {
 		'includes/segments.php',
 		'includes/products.php',
 		'includes/upsell.php',
+		'includes/customers.php',
+		'includes/orders.php',
 		'includes/render.php',
 		'assets/dashboard.css',
 		'assets/dashboard.js',
@@ -163,10 +165,24 @@ function mv_an_enqueue() {
 	wp_enqueue_style( 'mv-an-dashboard', MV_AN_URL . 'assets/dashboard.css', [ 'mv-an-fonts' ], MV_AN_VERSION );
 	wp_enqueue_script( 'mv-an-dashboard', MV_AN_URL . 'assets/dashboard.js', [], MV_AN_VERSION, true );
 
-	$data = mv_an_load() ? mv_an_get_view_data( mv_an_current_args() ) : [];
+	$args = mv_an_current_args();
+	$data = mv_an_load() ? mv_an_get_view_data( $args ) : [];
 	$cfg  = [
-		'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-		'nonce'   => wp_create_nonce( 'mv_an' ),
+		'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
+		'nonce'    => wp_create_nonce( 'mv_an' ),
+		/* O explorador de clientes e o de pedidos consultam sob demanda,
+		   sempre no MESMO recorte da tela — os filtros viajam juntos. */
+		'args'     => [
+			'mv_period'  => $args['period'],
+			'mv_cat'     => (int) $args['category'],
+			'mv_compare' => $args['compare'],
+			'mv_after'   => $args['after'],
+			'mv_before'  => $args['before'],
+		],
+		'exportUrl'    => admin_url( 'admin-post.php' ),
+		'exportNonce'  => wp_create_nonce( 'mv_an_export' ),
+		'statusLabels' => mv_an_load() ? mv_an_status_labels() : [],
+		'statuses'     => mv_an_load() ? mv_an_statuses() : [],
 	];
 
 	/* wp_add_inline_script em vez de wp_localize_script: o localize
@@ -290,11 +306,88 @@ add_action( 'wp_ajax_mv_an_refresh', function () {
 } );
 
 /* ---------------------------------------------------------------
-   7. AJAX — exportação CSV da lista de oportunidades
+   7. AJAX — consultas sob demanda (clientes, pedidos, ficha)
 
-   Gerada no servidor, atrás da mesma capability: a lista carrega
-   nome e e-mail de clientes reais e não pode ter rota pública.
+   Leitura via GET: os filtros chegam pela query string e passam pelo
+   mesmo mv_an_current_args() da tela, então o recorte é idêntico.
+   Nonce + capability em todas: as respostas carregam nome e e-mail.
 --------------------------------------------------------------- */
+function mv_an_ajax_guard() {
+	check_ajax_referer( 'mv_an', 'nonce' );
+	if ( ! mv_an_user_can() ) {
+		wp_send_json_error( [ 'message' => __( 'Sem permissão.', 'mv-analytics' ) ], 403 );
+	}
+	if ( ! mv_an_load() ) {
+		wp_send_json_error( [ 'message' => __( 'Instalação incompleta.', 'mv-analytics' ) ], 500 );
+	}
+	if ( 'ready' !== mv_an_lookup_status() ) {
+		wp_send_json_error( [ 'message' => __( 'As tabelas de relatório do WooCommerce ainda não foram importadas.', 'mv-analytics' ) ], 409 );
+	}
+}
+
+add_action( 'wp_ajax_mv_an_customers', function () {
+	mv_an_ajax_guard();
+	$args = mv_an_current_args();
+	wp_send_json_success( mv_an_customer_list( mv_an_range( $args ), $args, mv_an_customer_query_args() ) );
+} );
+
+add_action( 'wp_ajax_mv_an_orders', function () {
+	mv_an_ajax_guard();
+	$args = mv_an_current_args();
+	wp_send_json_success( mv_an_order_list( mv_an_range( $args ), $args, mv_an_order_query_args() ) );
+} );
+
+add_action( 'wp_ajax_mv_an_customer', function () {
+	mv_an_ajax_guard();
+	$id     = isset( $_GET['id'] ) ? absint( $_GET['id'] ) : 0;
+	$detail = mv_an_customer_detail( $id );
+	if ( ! $detail ) {
+		wp_send_json_error( [ 'message' => __( 'Cliente não encontrado.', 'mv-analytics' ) ], 404 );
+	}
+	wp_send_json_success( $detail );
+} );
+
+/* ---------------------------------------------------------------
+   8. Exportação CSV — oportunidades, clientes e pedidos
+
+   Gerada no servidor, atrás da mesma capability: as listas carregam
+   nome e e-mail de clientes reais e não podem ter rota pública. Cada
+   exportação herda o recorte da tela E os filtros do explorador.
+--------------------------------------------------------------- */
+function mv_an_csv_open( $name ) {
+	nocache_headers();
+	header( 'Content-Type: text/csv; charset=utf-8' );
+	header( 'Content-Disposition: attachment; filename=multivegetal-' . $name . '-' . gmdate( 'Y-m-d' ) . '.csv' );
+	$out = fopen( 'php://output', 'w' );
+	/* BOM: sem ele o Excel pt-BR abre os acentos quebrados. */
+	fwrite( $out, "\xEF\xBB\xBF" );
+	return $out;
+}
+
+/**
+ * Linha de CSV à prova de fórmula: nome de cliente ou de produto que
+ * comece com = + - @ seria executado como fórmula pelo Excel. Um
+ * apóstrofo na frente desarma, e número legítimo passa intacto.
+ */
+function mv_an_csv_row( $out, $cells ) {
+	foreach ( $cells as &$c ) {
+		if ( is_string( $c ) && '' !== $c && false !== strpos( "=+-@\t\r", $c[0] ) && ! is_numeric( str_replace( ',', '.', $c ) ) ) {
+			$c = "'" . $c;
+		}
+	}
+	unset( $c );
+	fputcsv( $out, $cells, ';' );
+}
+
+function mv_an_csv_money( $v ) {
+	return number_format( (float) $v, 2, ',', '' );
+}
+
+/** Teto de linhas por exportação — ajustável por filtro. */
+function mv_an_export_max() {
+	return (int) apply_filters( 'mv_analytics_export_max', 10000 );
+}
+
 add_action( 'admin_post_mv_an_export', function () {
 	if ( ! mv_an_user_can() ) {
 		wp_die( esc_html__( 'Sem permissão para exportar dados de clientes.', 'mv-analytics' ) );
@@ -304,26 +397,61 @@ add_action( 'admin_post_mv_an_export', function () {
 		wp_die( esc_html__( 'Instalação incompleta.', 'mv-analytics' ) );
 	}
 
-	$data = mv_an_get_view_data( mv_an_current_args() );
+	$args  = mv_an_current_args();
+	$range = mv_an_range( $args );
+	$type  = isset( $_GET['type'] ) ? sanitize_key( wp_unslash( $_GET['type'] ) ) : 'opportunities';
+
+	if ( 'customers' === $type ) {
+		$list = mv_an_customer_list( $range, $args, mv_an_customer_query_args(), mv_an_export_max() );
+		$out  = mv_an_csv_open( 'clientes' );
+		mv_an_csv_row( $out, [ 'ID', 'Cliente', 'E-mail', 'Cidade', 'UF', 'Estágio', 'Pedidos (total)', 'Total gasto', 'Ticket médio', 'Itens', '1ª compra', 'Última compra', 'Dias sem comprar', 'Intervalo médio (dias)', 'Pedidos no período', 'Gasto no período' ] );
+		foreach ( $list['rows'] as $r ) {
+			mv_an_csv_row( $out, [
+				$r['id'], $r['name'], $r['email'], $r['city'], $r['state'], $r['segLabel'],
+				$r['orders'], mv_an_csv_money( $r['spent'] ), mv_an_csv_money( $r['avg'] ), $r['items'],
+				$r['first'], $r['last'], $r['days'], null === $r['interval'] ? '' : $r['interval'],
+				$r['periodOrders'], mv_an_csv_money( $r['periodSpent'] ),
+			] );
+		}
+		fclose( $out );
+		exit;
+	}
+
+	if ( 'orders' === $type ) {
+		/* Sem wc_get_order() por linha: numa exportação de milhares de
+		   pedidos isso carregaria cada objeto. Fica só o que o lookup tem. */
+		$list = mv_an_order_list( $range, $args, mv_an_order_query_args(), mv_an_export_max(), false );
+		$out  = mv_an_csv_open( 'pedidos' );
+		mv_an_csv_row( $out, [ 'Pedido', 'Data', 'Status', 'Cliente', 'E-mail', 'Local', 'Tipo', 'Nº de compras do cliente', 'Itens', 'Produtos', 'Frete', 'Impostos', 'Líquido', 'Total' ] );
+		foreach ( $list['rows'] as $r ) {
+			$prods = [];
+			foreach ( $r['lines'] as $l ) {
+				$prods[] = $l['qty'] . 'x ' . $l['name'];
+			}
+			mv_an_csv_row( $out, [
+				$r['number'], $r['date'], $r['statusLbl'], $r['customer'], $r['email'], $r['location'],
+				$r['returning'] ? 'Recorrente' : 'Novo', $r['lifeOrders'], $r['items'], implode( ' | ', $prods ),
+				mv_an_csv_money( $r['shipping'] ), mv_an_csv_money( $r['tax'] ), mv_an_csv_money( $r['net'] ), mv_an_csv_money( $r['total'] ),
+			] );
+		}
+		fclose( $out );
+		exit;
+	}
+
+	$data = mv_an_get_view_data( $args );
 	$rows = isset( $data['opportunities'] ) ? $data['opportunities'] : [];
 
-	nocache_headers();
-	header( 'Content-Type: text/csv; charset=utf-8' );
-	header( 'Content-Disposition: attachment; filename=multivegetal-oportunidades-' . gmdate( 'Y-m-d' ) . '.csv' );
-
-	$out = fopen( 'php://output', 'w' );
-	/* BOM: sem ele o Excel pt-BR abre os acentos quebrados. */
-	fwrite( $out, "\xEF\xBB\xBF" );
-	fputcsv( $out, [ 'Cliente', 'E-mail', 'Já comprou', 'Sugerir', 'Motivo', 'Potencial' ], ';' );
+	$out = mv_an_csv_open( 'oportunidades' );
+	mv_an_csv_row( $out, [ 'Cliente', 'E-mail', 'Já comprou', 'Sugerir', 'Motivo', 'Potencial' ] );
 	foreach ( $rows as $r ) {
-		fputcsv( $out, [
+		mv_an_csv_row( $out, [
 			isset( $r['customer'] ) ? $r['customer'] : '',
 			isset( $r['email'] ) ? $r['email'] : '',
 			isset( $r['bought'] ) ? $r['bought'] : '',
 			isset( $r['suggest'] ) ? $r['suggest'] : '',
 			isset( $r['reason'] ) ? $r['reason'] : '',
 			isset( $r['potential'] ) ? number_format( (float) $r['potential'], 2, ',', '.' ) : '',
-		], ';' );
+		] );
 	}
 	fclose( $out );
 	exit;

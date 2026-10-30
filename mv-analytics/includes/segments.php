@@ -27,17 +27,33 @@ function mv_an_totals( $range, $args, $prev = false ) {
 	   linha própria, filha do pedido original e com valores negativos.
 	   Somar essas linhas é o certo (é assim que o estorno abate a
 	   receita), mas contá-las como pedido inflava o total. */
+	/* Reembolso = linhas filhas (parent_id > 0), que chegam negativas.
+	   "Novos clientes" = quem fez a 1ª compra da vida dentro do período,
+	   pela mesma marcação returning_customer do WooCommerce. */
 	$sql = 'SELECT SUM(CASE WHEN s.parent_id = 0 THEN 1 ELSE 0 END) AS orders,'
 		. ' COALESCE(SUM(s.total_sales),0) AS revenue,'
 		. ' COALESCE(SUM(s.net_total),0) AS net_revenue,'
 		. ' COUNT(DISTINCT s.customer_id) AS customers,'
+		. ' COUNT(DISTINCT CASE WHEN s.parent_id = 0 AND COALESCE(s.returning_customer,0) = 0 THEN s.customer_id END) AS new_customers,'
 		. ' COALESCE(SUM(CASE WHEN s.returning_customer = 1 THEN s.total_sales ELSE 0 END),0) AS rev_ret,'
-		. ' COALESCE(SUM(s.num_items_sold),0) AS items'
+		. ' COALESCE(SUM(CASE WHEN s.parent_id = 0 THEN s.num_items_sold ELSE 0 END),0) AS items,'
+		. ' COALESCE(SUM(s.shipping_total),0) AS shipping,'
+		. ' COALESCE(-SUM(CASE WHEN s.parent_id > 0 THEN s.total_sales ELSE 0 END),0) AS refunds'
 		. ' FROM `' . esc_sql( $t['stats'] ) . '` s WHERE' . $w['sql'];
 
 	$row = $wpdb->get_row( $wpdb->prepare( $sql, $w['params'] ), ARRAY_A );
 	if ( ! $row ) {
-		$row = [ 'orders' => 0, 'revenue' => 0, 'net_revenue' => 0, 'customers' => 0, 'rev_ret' => 0, 'items' => 0 ];
+		$row = [ 'orders' => 0, 'revenue' => 0, 'net_revenue' => 0, 'customers' => 0, 'new_customers' => 0, 'rev_ret' => 0, 'items' => 0, 'shipping' => 0, 'refunds' => 0 ];
+	}
+
+	/* Descontos de cupom — tabela própria do Analytics. */
+	$row['discount'] = 0;
+	if ( mv_an_table_exists( $t['coupons'] ) ) {
+		$row['discount'] = (float) $wpdb->get_var( $wpdb->prepare(
+			'SELECT COALESCE(SUM(cl.discount_amount),0) FROM `' . esc_sql( $t['coupons'] ) . '` cl'
+			. ' INNER JOIN `' . esc_sql( $t['stats'] ) . '` s ON s.order_id = cl.order_id WHERE' . $w['sql'],
+			$w['params']
+		) );
 	}
 
 	/* Clientes que compraram mais de uma vez dentro do período. */
@@ -52,7 +68,7 @@ function mv_an_totals( $range, $args, $prev = false ) {
 /* ---------------------------------------------------------------
    KPIs
 --------------------------------------------------------------- */
-function mv_an_kpis( $range, $args ) {
+function mv_an_kpis( $range, $args, $series = null ) {
 	$now  = mv_an_totals( $range, $args, false );
 	$was  = mv_an_totals( $range, $args, true );
 
@@ -68,72 +84,327 @@ function mv_an_kpis( $range, $args ) {
 	$repeat     = $now['customers'] ? ( $now['repeaters'] / $now['customers'] ) * 100 : 0;
 	$repeat_was = $was['customers'] ? ( $was['repeaters'] / $was['customers'] ) * 100 : 0;
 
+	$ipo        = $now['orders'] ? $now['items'] / $now['orders'] : 0;
+	$ipo_was    = $was['orders'] ? $was['items'] / $was['orders'] : 0;
+
+	/* Sparkline: a mesma série do gráfico de evolução, sem consulta extra. */
+	$spark = function ( $fn ) use ( $series ) {
+		if ( empty( $series['rows'] ) || count( $series['rows'] ) < 2 ) return null;
+		return array_map( $fn, $series['rows'] );
+	};
+
 	return [
-		/* Os três primeiros usam os mesmos nomes dos cards do WooCommerce
+		/* Os primeiros usam os mesmos nomes dos cards do WooCommerce
 		   de propósito: são conferíveis um a um contra Analytics → Receita. */
 		[
+			'key'   => 'revenue',
 			'label' => __( 'Vendas totais', 'mv-analytics' ),
 			'value' => mv_an_money_short( $now['revenue'] ),
+			'exact' => mv_an_money( $now['revenue'] ),
 			'delta' => mv_an_delta( $now['revenue'], $was['revenue'] ),
+			'spark' => $spark( function ( $r ) { return $r['revenue']; } ),
 		],
 		[
+			'key'   => 'net',
 			'label' => __( 'Vendas líquidas', 'mv-analytics' ),
 			'value' => mv_an_money_short( $now['net_revenue'] ),
+			'exact' => mv_an_money( $now['net_revenue'] ),
 			'delta' => mv_an_delta( $now['net_revenue'], $was['net_revenue'] ),
+			'spark' => $spark( function ( $r ) { return $r['net']; } ),
 		],
 		[
+			'key'   => 'orders',
 			'label' => __( 'Pedidos', 'mv-analytics' ),
 			'value' => mv_an_int( $now['orders'] ),
 			'delta' => mv_an_delta( $now['orders'], $was['orders'] ),
+			'spark' => $spark( function ( $r ) { return $r['orders']; } ),
 		],
 		[
+			'key'   => 'ticket',
 			'label' => __( 'Ticket médio', 'mv-analytics' ),
 			'value' => mv_an_money( $ticket ),
 			'delta' => mv_an_delta( $ticket, $ticket_was ),
+			'spark' => $spark( function ( $r ) { return $r['orders'] ? round( $r['net'] / $r['orders'], 2 ) : 0; } ),
 		],
 		[
+			'key'   => 'customers',
 			'label' => __( 'Clientes únicos', 'mv-analytics' ),
 			'value' => mv_an_int( $now['customers'] ),
 			'delta' => mv_an_delta( $now['customers'], $was['customers'] ),
+			'spark' => $spark( function ( $r ) { return $r['customers']; } ),
 		],
 		[
+			'key'   => 'new',
+			'label' => __( 'Novos clientes', 'mv-analytics' ),
+			'value' => mv_an_int( $now['new_customers'] ),
+			'delta' => mv_an_delta( $now['new_customers'], $was['new_customers'] ),
+			'spark' => $spark( function ( $r ) { return $r['newCustomers']; } ),
+		],
+		[
+			'key'   => 'share',
 			'label' => __( 'Receita de recorrentes', 'mv-analytics' ),
 			'value' => mv_an_dec( $share ),
 			'unit'  => '%',
 			'delta' => mv_an_delta( $share, $share_was ),
 		],
 		[
+			'key'   => 'repeat',
 			'label' => __( 'Taxa de recompra', 'mv-analytics' ),
 			'value' => mv_an_dec( $repeat ),
 			'unit'  => '%',
 			'delta' => mv_an_delta( $repeat, $repeat_was ),
 		],
+		[
+			'key'   => 'ipo',
+			'label' => __( 'Itens por pedido', 'mv-analytics' ),
+			'value' => mv_an_dec( $ipo ),
+			'delta' => mv_an_delta( $ipo, $ipo_was ),
+		],
+		[
+			'key'   => 'shipping',
+			'label' => __( 'Frete cobrado', 'mv-analytics' ),
+			'value' => mv_an_money_short( $now['shipping'] ),
+			'exact' => mv_an_money( $now['shipping'] ),
+			'delta' => mv_an_delta( $now['shipping'], $was['shipping'] ),
+		],
+		[
+			'key'    => 'discount',
+			'label'  => __( 'Descontos em cupons', 'mv-analytics' ),
+			'value'  => mv_an_money_short( $now['discount'] ),
+			'exact'  => mv_an_money( $now['discount'] ),
+			'delta'  => mv_an_delta( $now['discount'], $was['discount'] ),
+			/* Subir aqui é custo: o badge inverte o sentido de bom/ruim. */
+			'invert' => true,
+		],
+		[
+			'key'    => 'refunds',
+			'label'  => __( 'Reembolsos', 'mv-analytics' ),
+			'value'  => mv_an_money_short( $now['refunds'] ),
+			'exact'  => mv_an_money( $now['refunds'] ),
+			'delta'  => mv_an_delta( $now['refunds'], $was['refunds'] ),
+			'invert' => true,
+		],
 	];
 }
 
 /* ---------------------------------------------------------------
-   Série mensal empilhada
---------------------------------------------------------------- */
-function mv_an_monthly( $range, $args ) {
-	global $wpdb;
-	$t = mv_an_tables();
-	$w = mv_an_where( $range, $args );
+   Série temporal — período atual e comparado, balde a balde
 
-	$sql = "SELECT DATE_FORMAT(s.date_created, '%%Y-%%m') AS ym,"
-		. ' COALESCE(SUM(CASE WHEN s.returning_customer = 1 THEN s.total_sales ELSE 0 END),0) AS s1,'
-		. ' COALESCE(SUM(CASE WHEN s.returning_customer = 1 THEN 0 ELSE s.total_sales END),0) AS s2'
+   Os baldes vêm de mv_an_buckets() e não do GROUP BY: dia sem venda
+   precisa aparecer como zero, senão a linha "pula" o vazio e o gráfico
+   mente sobre a cadência. O período comparado é alinhado por POSIÇÃO
+   (1º dia com 1º dia), que é o que permite sobrepor as duas linhas.
+--------------------------------------------------------------- */
+function mv_an_series_query( $range, $args, $prev, $gran ) {
+	global $wpdb;
+	$t   = mv_an_tables();
+	$w   = mv_an_where( $range, $args, $prev );
+	$f   = mv_an_bucket_formats( $gran );
+	$col = mv_an_date_col();
+
+	$sql = 'SELECT DATE_FORMAT(s.' . $col . ", '" . $f['sql'] . "') AS k,"
+		. ' SUM(CASE WHEN s.parent_id = 0 THEN 1 ELSE 0 END) AS orders,'
+		. ' COALESCE(SUM(s.total_sales),0) AS revenue,'
+		. ' COALESCE(SUM(s.net_total),0) AS net,'
+		. ' COALESCE(SUM(CASE WHEN s.returning_customer = 1 THEN s.total_sales ELSE 0 END),0) AS rev_ret,'
+		. ' COUNT(DISTINCT CASE WHEN s.parent_id = 0 THEN s.customer_id END) AS customers,'
+		. ' COUNT(DISTINCT CASE WHEN s.parent_id = 0 AND COALESCE(s.returning_customer,0) = 0 THEN s.customer_id END) AS new_customers'
 		. ' FROM `' . esc_sql( $t['stats'] ) . '` s WHERE' . $w['sql']
-		. ' GROUP BY ym ORDER BY ym ASC';
+		. ' GROUP BY k';
 
 	$rows = $wpdb->get_results( $wpdb->prepare( $sql, $w['params'] ), ARRAY_A );
+	$map  = [];
+	foreach ( (array) $rows as $r ) {
+		$map[ $r['k'] ] = $r;
+	}
+	return $map;
+}
+
+function mv_an_series( $range, $args ) {
+	$gran = mv_an_granularity( $range );
+	$cur  = mv_an_buckets( $range['start_ts'], $range['end_ts'], $gran );
+	$prev = mv_an_buckets( strtotime( $range['prev_start'] ), strtotime( $range['prev_end'] ), $gran );
+
+	$now = mv_an_series_query( $range, $args, false, $gran );
+	$was = mv_an_series_query( $range, $args, true, $gran );
+
+	$names = [
+		'hour'  => __( 'hora', 'mv-analytics' ),
+		'day'   => __( 'dia', 'mv-analytics' ),
+		'week'  => __( 'semana', 'mv-analytics' ),
+		'month' => __( 'mês', 'mv-analytics' ),
+	];
 
 	$out = [];
-	foreach ( (array) $rows as $r ) {
-		$ts = strtotime( $r['ym'] . '-01' );
+	foreach ( $cur as $i => $b ) {
+		$r  = isset( $now[ $b['key'] ] ) ? $now[ $b['key'] ] : null;
+		$pk = isset( $prev[ $i ] ) ? $prev[ $i ]['key'] : null;
+		$p  = ( $pk && isset( $was[ $pk ] ) ) ? $was[ $pk ] : null;
+
+		$rev = $r ? (float) $r['revenue'] : 0;
+		$ret = $r ? (float) $r['rev_ret'] : 0;
+
 		$out[] = [
-			'label' => $ts ? mb_strtolower( date_i18n( 'M/y', $ts ) ) : $r['ym'],
-			's1'    => round( (float) $r['s1'], 2 ),
-			's2'    => round( (float) $r['s2'], 2 ),
+			'label'        => 'week' === $gran ? sprintf( __( 'sem. %s', 'mv-analytics' ), $b['label'] ) : $b['label'],
+			'revenue'      => round( $rev, 2 ),
+			'net'          => $r ? round( (float) $r['net'], 2 ) : 0,
+			'orders'       => $r ? (int) $r['orders'] : 0,
+			'customers'    => $r ? (int) $r['customers'] : 0,
+			'newCustomers' => $r ? (int) $r['new_customers'] : 0,
+			/* s1/s2: contrato do gráfico empilhado (recorrente embaixo). */
+			's1'           => round( $ret, 2 ),
+			's2'           => round( $rev - $ret, 2 ),
+			'prevLabel'    => isset( $prev[ $i ] ) ? $prev[ $i ]['label'] : '',
+			'prev'         => [
+				'revenue' => $p ? round( (float) $p['revenue'], 2 ) : 0,
+				'net'     => $p ? round( (float) $p['net'], 2 ) : 0,
+				'orders'  => $p ? (int) $p['orders'] : 0,
+			],
+		];
+	}
+
+	return [
+		'granularity' => $gran,
+		'unit'        => $names[ $gran ],
+		'rows'        => $out,
+	];
+}
+
+/* ---------------------------------------------------------------
+   Quando os clientes compram — dia da semana × hora
+--------------------------------------------------------------- */
+function mv_an_heatmap( $range, $args ) {
+	global $wpdb;
+	$t   = mv_an_tables();
+	$w   = mv_an_where( $range, $args );
+	$col = mv_an_date_col();
+
+	$sql = 'SELECT DAYOFWEEK(s.' . $col . ') AS dw, HOUR(s.' . $col . ') AS h,'
+		. ' COUNT(*) AS n, COALESCE(SUM(s.total_sales),0) AS rev'
+		. ' FROM `' . esc_sql( $t['stats'] ) . '` s WHERE' . $w['sql'] . ' AND s.parent_id = 0'
+		. ' GROUP BY dw, h';
+	$rows = $wpdb->get_results( $wpdb->prepare( $sql, $w['params'] ), ARRAY_A );
+	if ( ! $rows ) return [];
+
+	/* DAYOFWEEK: 1 = domingo. A grade começa na segunda, como o calendário
+	   comercial — o fim de semana fica junto, no fim. */
+	$days  = [ __( 'Seg', 'mv-analytics' ), __( 'Ter', 'mv-analytics' ), __( 'Qua', 'mv-analytics' ), __( 'Qui', 'mv-analytics' ), __( 'Sex', 'mv-analytics' ), __( 'Sáb', 'mv-analytics' ), __( 'Dom', 'mv-analytics' ) ];
+	$grid  = array_fill( 0, 7, array_fill( 0, 24, 0 ) );
+	$money = array_fill( 0, 7, array_fill( 0, 24, 0 ) );
+	foreach ( $rows as $r ) {
+		$d = ( (int) $r['dw'] + 5 ) % 7;
+		$grid[ $d ][ (int) $r['h'] ]  = (int) $r['n'];
+		$money[ $d ][ (int) $r['h'] ] = round( (float) $r['rev'], 2 );
+	}
+
+	$out = [];
+	foreach ( $days as $i => $label ) {
+		$out[] = [ 'label' => $label, 'cells' => $grid[ $i ], 'revenue' => $money[ $i ] ];
+	}
+	return $out;
+}
+
+/* ---------------------------------------------------------------
+   Status dos pedidos — TODOS, inclusive os que o Analytics exclui
+
+   Aqui o recorte é sempre pela data de criação: pedido cancelado ou
+   malsucedido nunca tem data de pagamento, e sumiria do quadro que
+   existe justamente para mostrá-lo.
+--------------------------------------------------------------- */
+function mv_an_status_breakdown( $range, $args ) {
+	global $wpdb;
+	$t = mv_an_tables();
+	$w = mv_an_where( $range, $args, false, [ 'col' => 'date_created', 'statuses' => false ] );
+
+	$sql = 'SELECT s.status, COUNT(*) AS n, COALESCE(SUM(s.total_sales),0) AS rev'
+		. ' FROM `' . esc_sql( $t['stats'] ) . '` s WHERE' . $w['sql'] . ' AND s.parent_id = 0'
+		. ' GROUP BY s.status ORDER BY n DESC';
+	$rows = $wpdb->get_results( $wpdb->prepare( $sql, $w['params'] ), ARRAY_A );
+	if ( ! $rows ) return [];
+
+	$labels  = mv_an_status_labels();
+	$counted = mv_an_statuses();
+	$total   = 0;
+	foreach ( $rows as $r ) {
+		$total += (int) $r['n'];
+	}
+
+	$out = [];
+	foreach ( $rows as $r ) {
+		$out[] = [
+			'status'  => $r['status'],
+			'label'   => isset( $labels[ $r['status'] ] ) ? $labels[ $r['status'] ] : $r['status'],
+			'orders'  => (int) $r['n'],
+			'revenue' => round( (float) $r['rev'], 2 ),
+			'pct'     => $total ? round( ( (int) $r['n'] / $total ) * 100, 1 ) : 0,
+			'counted' => in_array( $r['status'], $counted, true ),
+		];
+	}
+	return $out;
+}
+
+/* ---------------------------------------------------------------
+   Frequência de compra
+
+   Clientes que compraram no período, agrupados por quantas vezes
+   compraram NA VIDA (até o fim do período). Responde "quantos dos
+   meus clientes de agora já são de casa".
+--------------------------------------------------------------- */
+function mv_an_frequency( $range, $args ) {
+	global $wpdb;
+	$t        = mv_an_tables();
+	$w        = mv_an_where( $range, $args );
+	$statuses = mv_an_statuses();
+	$phs      = implode( ',', array_fill( 0, count( $statuses ), '%s' ) );
+
+	$sql = 'SELECT l.n, COUNT(*) AS customers, COALESCE(SUM(l.spent),0) AS spent FROM ('
+		. '   SELECT customer_id, COUNT(*) AS n, SUM(total_sales) AS spent'
+		. '   FROM `' . esc_sql( $t['stats'] ) . "` WHERE status IN ( $phs ) AND parent_id = 0 AND customer_id > 0 AND date_created <= %s"
+		. '   GROUP BY customer_id'
+		. ' ) l INNER JOIN ('
+		. '   SELECT DISTINCT s.customer_id FROM `' . esc_sql( $t['stats'] ) . '` s'
+		. '   WHERE' . $w['sql'] . ' AND s.customer_id > 0 AND s.parent_id = 0'
+		. ' ) a ON a.customer_id = l.customer_id'
+		. ' GROUP BY l.n';
+
+	$params = array_merge( $statuses, [ $range['end'] ], $w['params'] );
+	$rows   = $wpdb->get_results( $wpdb->prepare( $sql, $params ), ARRAY_A );
+	if ( ! $rows ) return [];
+
+	$bins = [
+		'1'    => [ 1, 1 ],
+		'2'    => [ 2, 2 ],
+		'3'    => [ 3, 3 ],
+		'4'    => [ 4, 4 ],
+		'5'    => [ 5, 5 ],
+		'6–9'  => [ 6, 9 ],
+		'10+'  => [ 10, PHP_INT_MAX ],
+	];
+	$acc   = [];
+	$total = 0;
+	foreach ( $bins as $label => $b ) {
+		$acc[ $label ] = [ 'customers' => 0, 'spent' => 0 ];
+	}
+	foreach ( $rows as $r ) {
+		$n = (int) $r['n'];
+		foreach ( $bins as $label => $b ) {
+			if ( $n >= $b[0] && $n <= $b[1] ) {
+				$acc[ $label ]['customers'] += (int) $r['customers'];
+				$acc[ $label ]['spent']     += (float) $r['spent'];
+				break;
+			}
+		}
+		$total += (int) $r['customers'];
+	}
+
+	$out = [];
+	foreach ( $acc as $label => $a ) {
+		$out[] = [
+			'label'     => $label,
+			'customers' => $a['customers'],
+			'pct'       => $total ? round( ( $a['customers'] / $total ) * 100, 1 ) : 0,
+			'spent'     => round( $a['spent'], 2 ),
+			'avgSpent'  => $a['customers'] ? round( $a['spent'] / $a['customers'], 2 ) : 0,
 		];
 	}
 	return $out;

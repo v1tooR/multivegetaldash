@@ -60,6 +60,13 @@
 	--mv-grid: var(--color-border, #e0ddd8);
 	--mv-axis: var(--color-text-light, #8a8a8a);
 
+	/* Período comparado: contexto, não protagonista — cinza quente da
+	   mesma família das bordas, um passo acima para ler como linha. */
+	--mv-prev: #a9a398;
+
+	/* Estágio "em risco": aviso, não erro — mesmo token de warning do DS. */
+	--mv-warn: var(--color-warning, #C4922A);
+
 	font-family: var(--mv-font);
 	color: var(--mv-c-text);
 	font-size: 16px;
@@ -330,12 +337,13 @@
    5. KPI — hero number. Sem plot, então sem camada de hover.
    ============================================================ */
 
-/* auto-fit em vez de 6 colunas fixas: a faixa passou a ter 7 cards
-   (vendas totais e líquidas viraram indicadores separados, para poderem
-   ser conferidos um a um contra o relatório do WooCommerce). */
+/* Colunas fluidas em vez de fixas: a faixa tem 12 cards, e abaixo de
+   ~1100px o grid reflui sozinho para 5, 4, 3… sem card órfão forçado. */
 .mv-an-kpis {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+	/* No máximo 6 por linha: com 12 cards, 7 colunas deixariam a
+	   segunda linha com dois buracos; 6 fecha em duas linhas cheias. */
+	grid-template-columns: repeat(auto-fill, minmax(max(168px, calc((100% - 80px) / 6)), 1fr));
 	gap: 16px;
 	margin-bottom: 20px;
 }
@@ -817,7 +825,406 @@
 }
 
 /* ============================================================
-   12. RESPONSIVO — breakpoints alinhados aos do Elementor
+   12. LINHA DE EVOLUÇÃO + SPARKLINE
+   ============================================================ */
+
+.mv-an-chart__line--cur  { stroke: var(--mv-s1); stroke-width: 2; }
+.mv-an-chart__line--prev { stroke: var(--mv-prev); stroke-width: 1.5; }
+.mv-an-chart__area { fill: var(--mv-s1); opacity: .07; }
+.mv-an-chart .mv-an-chart__dot { fill: var(--mv-s1); }
+.mv-an-chart .mv-an-chart__dot--prev { fill: var(--mv-prev); }
+/* Crosshair sólido: tracejado leria como projeção ou meta. */
+.mv-an-chart .mv-an-chart__crosshair { stroke-dasharray: none; }
+
+.mv-an-legend__swatch--prev { background: var(--mv-prev); }
+.mv-an-legend--inline { margin: 0; }
+
+/* Barra acima do gráfico: seletor de indicador + legenda. */
+.mv-an-chartbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px 20px;
+	margin-bottom: 14px;
+}
+
+/* Seletor segmentado — mesma pílula do toggle Gráfico/Tabela. */
+.mv-an-seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.mv-an-seg button {
+	padding: 7px 14px;
+	font-family: var(--mv-font);
+	font-size: 0.72rem;
+	font-weight: 600;
+	color: var(--mv-c-muted);
+	background: var(--mv-c-bg-muted);
+	border: 0;
+	border-radius: 9999px;
+	cursor: pointer;
+	transition: all var(--mv-trans);
+}
+.mv-an-seg button:hover { color: var(--mv-c-primary); }
+.mv-an-seg button[aria-pressed="true"] { color: var(--mv-c-inverse); background: var(--mv-c-primary); }
+.mv-an-seg button:focus-visible { outline: 2px solid var(--mv-c-accent); outline-offset: 2px; }
+
+.mv-an-spark { display: block; width: 100%; height: 28px; overflow: visible; }
+.mv-an-spark__line {
+	fill: none;
+	stroke: var(--mv-s1);
+	stroke-width: 1.5;
+	stroke-linejoin: round;
+	stroke-linecap: round;
+	vector-effect: non-scaling-stroke;
+}
+.mv-an-spark__area { fill: var(--mv-s1); opacity: .08; }
+
+/* ============================================================
+   13. MAPA DE CALOR SEMANAL (dia × hora)
+   ============================================================ */
+
+.mv-an-insight {
+	margin: 0 0 12px;
+	font-size: 0.8rem;
+	color: var(--mv-c-muted);
+}
+.mv-an-insight strong { color: var(--mv-c-text); font-weight: 600; }
+
+.mv-an-heat {
+	border-collapse: separate;
+	border-spacing: 2px;
+	font-size: 0.66rem;
+	width: 100%;
+	min-width: 560px;
+	table-layout: fixed;
+}
+.mv-an-heat th {
+	padding: 2px 0 4px;
+	font-weight: 600;
+	color: var(--mv-axis);
+	text-align: left;
+	white-space: nowrap;
+	overflow: visible;
+}
+.mv-an-heat th[scope="row"] {
+	width: 34px;
+	padding-right: 6px;
+	color: var(--mv-c-text);
+	font-weight: 500;
+}
+.mv-an-heat thead th:first-child { width: 34px; }
+.mv-an-heat td {
+	height: 22px;
+	border-radius: 4px;
+	background: var(--mv-r0);
+}
+.mv-an-heat td.r1 { background: var(--mv-r1); }
+.mv-an-heat td.r2 { background: var(--mv-r2); }
+.mv-an-heat td.r3 { background: var(--mv-r3); }
+.mv-an-heat td.r4 { background: var(--mv-r4); }
+.mv-an-heat td.r5 { background: var(--mv-r5); }
+.mv-an-heat td:hover { outline: 2px solid var(--mv-c-text); outline-offset: -1px; }
+.mv-an-heat .is-total {
+	width: 46px;
+	text-align: right;
+	background: transparent;
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	color: var(--mv-c-muted);
+	padding-left: 6px;
+}
+.mv-an-heat td.is-total:hover { outline: 0; }
+
+/* ============================================================
+   14. CÉLULAS, LINKS E BADGES NOVOS
+   ============================================================ */
+
+/* Nome de cliente clicável: parece texto, age como botão. */
+.mv-an .mv-an-link {
+	padding: 0;
+	font: inherit;
+	font-weight: 600;
+	color: var(--mv-c-primary);
+	background: none;
+	border: 0;
+	cursor: pointer;
+	text-align: left;
+	text-decoration: none;
+	box-shadow: none;
+}
+.mv-an .mv-an-link:hover { color: var(--mv-c-primary-dark); text-decoration: underline; text-underline-offset: 3px; }
+.mv-an .mv-an-link:focus-visible { outline: 2px solid var(--mv-c-accent); outline-offset: 2px; border-radius: 2px; }
+
+.mv-an-stackcell { display: inline-flex; flex-direction: column; gap: 1px; line-height: 1.35; }
+.mv-an-table .is-num .mv-an-stackcell { align-items: flex-end; }
+.mv-an-sub { font-size: 0.72rem; color: var(--mv-c-light); font-weight: 400; }
+.mv-an-table .is-strong { font-weight: 700; }
+
+.mv-an-badge--seg-r1   { background: var(--mv-r1); color: var(--mv-c-text); }
+.mv-an-badge--seg-r2   { background: var(--mv-r2); color: var(--mv-c-text); }
+.mv-an-badge--seg-r5   { background: var(--mv-r5); }
+.mv-an-badge--seg-warn { background: var(--mv-warn); color: var(--mv-c-text); }
+.mv-an-badge--seg-ghost{ background: var(--mv-c-bg-muted); color: var(--mv-c-muted); }
+
+.mv-an-code {
+	padding: 2px 8px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: 0.75rem;
+	background: var(--mv-c-bg-muted);
+	border-radius: 6px;
+}
+
+.mv-an-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mv-an-chip {
+	padding: 5px 12px;
+	font-size: 0.75rem;
+	background: var(--mv-c-bg-soft);
+	border: 1px solid var(--mv-c-border);
+	border-radius: 9999px;
+}
+
+/* ============================================================
+   15. EXPLORADOR (clientes / pedidos)
+   ============================================================ */
+
+.mv-an-xp__bar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 10px;
+}
+.mv-an-xp__export { margin-left: auto; }
+
+.mv-an .mv-an-input {
+	flex: 1 1 260px;
+	min-width: 0;
+	min-height: 40px;
+	padding: 9px 14px;
+	font-family: var(--mv-font);
+	font-size: 0.8rem;
+	color: var(--mv-c-text);
+	background: var(--mv-c-bg);
+	border: 2px solid var(--mv-c-border);
+	border-radius: 0.5rem;
+	box-shadow: none;
+	transition: border-color var(--mv-trans);
+}
+.mv-an .mv-an-input:hover { border-color: var(--mv-c-border-strong); }
+.mv-an .mv-an-input:focus { border-color: var(--mv-c-primary); outline: 0; box-shadow: none; }
+
+/* Select fora do cabeçalho verde: o mesmo, sem depender do fundo. */
+.mv-an .mv-an-select--light { min-height: 40px; line-height: 1.2; }
+
+.mv-an-xp__sum {
+	min-height: 1.4em;
+	margin-bottom: 8px;
+	font-size: 0.78rem;
+	color: var(--mv-c-muted);
+}
+
+/* Carregando: a página atual fica no lugar, esmaecida — sem esqueleto
+   piscando e sem a tabela "pular" de altura. */
+.mv-an-xp__body { transition: opacity 150ms ease; }
+.mv-an-xp.is-loading .mv-an-xp__body { opacity: .45; pointer-events: none; }
+
+.mv-an-xp__pager {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	margin-top: 14px;
+	font-size: 0.78rem;
+	color: var(--mv-c-muted);
+}
+.mv-an-xp__nav { display: inline-flex; gap: 6px; }
+.mv-an-btn[disabled] { opacity: .45; cursor: default; transform: none; }
+
+/* Linha de pedido expansível. */
+.mv-an-table .is-expand { width: 32px; padding-right: 0; }
+.mv-an .mv-an-expand {
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	font-size: 1rem;
+	line-height: 1;
+	color: var(--mv-c-muted);
+	background: var(--mv-c-bg-muted);
+	border: 0;
+	border-radius: 6px;
+	cursor: pointer;
+	transition: transform var(--mv-trans), background var(--mv-trans);
+}
+.mv-an .mv-an-expand:hover { background: var(--mv-c-border); color: var(--mv-c-text); }
+.mv-an .mv-an-expand[aria-expanded="true"] { transform: rotate(90deg); }
+.mv-an-table tr.is-open td { background: var(--mv-c-bg-soft); border-bottom-color: transparent; }
+.mv-an-table .mv-an-subrow td { background: var(--mv-c-bg-soft); padding: 4px 16px 16px 52px; }
+.mv-an-table .mv-an-subrow:hover td { background: var(--mv-c-bg-soft); }
+
+.mv-an-subrow__grid {
+	display: grid;
+	grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+	gap: 16px 32px;
+}
+
+.mv-an-lines { margin: 0; padding: 0; list-style: none; }
+.mv-an-lines li {
+	display: grid;
+	grid-template-columns: 36px 1fr auto;
+	gap: 8px;
+	padding: 5px 0;
+	font-size: 0.8rem;
+	border-bottom: 1px dashed var(--mv-c-border);
+}
+.mv-an-lines li:last-child { border-bottom: 0; }
+.mv-an-lines__qty { font-weight: 700; color: var(--mv-c-primary); font-variant-numeric: tabular-nums; }
+.mv-an-lines__val { font-variant-numeric: tabular-nums; color: var(--mv-c-muted); }
+
+.mv-an-facts {
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 4px 14px;
+	margin: 0;
+	font-size: 0.78rem;
+}
+.mv-an-facts dt { color: var(--mv-c-muted); }
+.mv-an-facts dd { margin: 0; text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   16. FICHA DO CLIENTE — gaveta lateral
+   ============================================================ */
+
+/* Acima da barra do wp-admin (z-index 99999). */
+.mv-an-drawer { position: fixed; inset: 0; z-index: 100000; }
+.mv-an-drawer[hidden] { display: none; }
+.mv-an-drawer__scrim {
+	position: absolute;
+	inset: 0;
+	background: rgba(26, 26, 26, .38);
+	animation: mv-an-fade 180ms ease;
+}
+.mv-an-drawer__panel {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	width: min(760px, 100vw);
+	overflow-y: auto;
+	background: var(--mv-c-bg);
+	box-shadow: -12px 0 40px rgba(26, 26, 26, .18);
+	animation: mv-an-slide 220ms ease;
+	outline: 0;
+}
+.mv-an-drawer__body { padding: 28px 28px 48px; }
+.mv-an .mv-an-drawer__close {
+	position: sticky;
+	top: 12px;
+	float: right;
+	z-index: 2;
+	width: 36px;
+	height: 36px;
+	margin: 12px 12px 0 0;
+	font-size: 1.4rem;
+	line-height: 1;
+	color: var(--mv-c-muted);
+	background: var(--mv-c-bg-muted);
+	border: 0;
+	border-radius: 9999px;
+	cursor: pointer;
+}
+.mv-an .mv-an-drawer__close:hover { color: var(--mv-c-text); background: var(--mv-c-border); }
+.mv-an .mv-an-drawer__close:focus-visible { outline: 2px solid var(--mv-c-accent); outline-offset: 2px; }
+
+html.mv-an-noscroll, html.mv-an-noscroll body { overflow: hidden; }
+
+@keyframes mv-an-fade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mv-an-slide { from { transform: translateX(32px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.mv-an-loading {
+	padding: 60px 0;
+	text-align: center;
+	color: var(--mv-c-muted);
+	font-size: 0.9rem;
+}
+
+.mv-an-dhead { margin-bottom: 22px; padding-right: 40px; }
+.mv-an .mv-an-dhead__name {
+	margin: 0 0 4px;
+	font-size: 1.5rem;
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.2;
+	color: var(--mv-c-text);
+}
+.mv-an-dhead__meta { margin: 0 0 10px; font-size: 0.85rem; color: var(--mv-c-muted); word-break: break-word; }
+.mv-an-dhead__badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.mv-an-dhead__links { display: flex; flex-wrap: wrap; gap: 8px; }
+.mv-an-dhead__links .mv-an-btn { padding: 8px 14px; font-size: 0.72rem; }
+
+.mv-an-dstats {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: 10px;
+	margin-bottom: 26px;
+}
+.mv-an-dstat {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	padding: 14px 16px;
+	background: var(--mv-c-bg-soft);
+	border: 1px solid var(--mv-c-border);
+	border-radius: 12px;
+}
+.mv-an-dstat__label {
+	font-size: 0.6rem;
+	font-weight: 600;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+	color: var(--mv-c-secondary);
+}
+.mv-an-dstat__value { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; color: var(--mv-c-text); }
+.mv-an-dstat__sub { font-size: 0.72rem; color: var(--mv-c-light); }
+
+.mv-an-dsec { margin-bottom: 26px; }
+.mv-an .mv-an-dsec__title {
+	margin: 0 0 12px;
+	padding-bottom: 8px;
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: var(--mv-c-text);
+	border-bottom: 1px solid var(--mv-c-border);
+}
+
+.mv-an-history { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.mv-an-history__item {
+	padding: 12px 16px;
+	border: 1px solid var(--mv-c-border);
+	border-radius: 12px;
+	transition: border-color var(--mv-trans);
+}
+.mv-an-history__item:hover { border-color: var(--mv-c-accent); }
+.mv-an-history__top {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 12px;
+	margin-bottom: 6px;
+	font-size: 0.8rem;
+}
+.mv-an-history__n {
+	font-size: 0.64rem;
+	font-weight: 700;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--mv-c-secondary);
+}
+.mv-an-history__date { color: var(--mv-c-muted); }
+.mv-an-history__total { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   17. RESPONSIVO — breakpoints alinhados aos do Elementor
    usados nos demais widgets (1024 / 767).
    ============================================================ */
 
@@ -841,6 +1248,10 @@
 	.mv-an-card__body { padding: 14px 18px 18px; }
 	.mv-an-tabs { flex-wrap: nowrap; overflow-x: auto; }
 	.mv-an-tab { white-space: nowrap; }
+	.mv-an-subrow__grid { grid-template-columns: 1fr; }
+	.mv-an-table .mv-an-subrow td { padding-left: 16px; }
+	.mv-an-drawer__body { padding: 20px 16px 40px; }
+	.mv-an-xp__export { margin-left: 0; }
 }
 
 @media (max-width: 430px) {

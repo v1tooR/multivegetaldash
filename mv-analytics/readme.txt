@@ -4,22 +4,30 @@ Tags: woocommerce, analytics, clientes, upsell, relatorios
 Requires at least: 5.8
 Tested up to: 6.6
 Requires PHP: 7.2
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 
 Painel de clientes, vendas e oportunidades de upselling para a loja da Multi Vegetal.
 
 == Description ==
 
-Adiciona a página **MV Analytics** no painel do WordPress, com quatro blocos:
+Adiciona a página **MV Analytics** no painel do WordPress, com seis blocos:
 
-1. **Visão geral** — receita, pedidos, ticket médio, clientes únicos, participação
-   dos recorrentes e taxa de recompra, cada um comparado com o período anterior.
-2. **Novos vs. Antigos** — como cada grupo compra, coorte de recompra por mês da
+1. **Visão geral** — doze indicadores com tendência (vendas, pedidos, ticket,
+   clientes, novos clientes, recompra, itens por pedido, frete, descontos e
+   reembolsos), evolução das vendas contra o período comparado, receita de novos
+   vs. recorrentes, mapa de calor de dia × hora e status dos pedidos.
+2. **Clientes** — quantas vezes cada cliente já comprou, melhores clientes do
+   período, receita por estado e a base completa pesquisável, com ficha individual
+   (histórico de compras, produtos favoritos, intervalo entre pedidos e próxima
+   compra prevista). Exportável em CSV.
+3. **Pedidos** — os pedidos do período com os itens exatos, nº da compra de cada
+   cliente, formas de pagamento e desempenho de cupons. Exportável em CSV.
+4. **Novos vs. Antigos** — como cada grupo compra, coorte de recompra por mês da
    primeira compra e a base separada por estágio de relacionamento.
-3. **Produtos** — mais vendidos, receita por categoria, curva ABC e a distinção
+5. **Produtos** — mais vendidos, receita por categoria, curva ABC e a distinção
    entre produto de entrada e produto de recompra.
-4. **Upselling** — pares comprados juntos (suporte, confiança e lift), lacunas de
+6. **Upselling** — pares comprados juntos (suporte, confiança e lift), lacunas de
    categoria e uma lista acionável de cliente → produto sugerido, exportável em CSV.
 
 Os dados vêm das tabelas de relatório que o WooCommerce já mantém indexadas, e a
@@ -58,6 +66,27 @@ depois de uma mudança de período é o mais lento; os seguintes vêm do cache.
 O botão "Recalcular agora" limpa e refaz.
 
 == Changelog ==
+
+= 1.3.0 =
+* O período passa a ser recortado pela mesma "Tipo de data" do WooCommerce
+  Analytics (padrão: data de pagamento). Antes era sempre a data de criação,
+  e pedidos pagos num dia diferente do da criação caíam em períodos distintos
+  nos dois painéis.
+* Aba Clientes: frequência de compra, melhores clientes, receita por estado
+  e explorador da base (busca, estágio, ordenação, paginação, CSV).
+* Ficha do cliente: todas as compras com os itens, total gasto, ticket,
+  intervalo médio, próxima compra prevista, produtos favoritos, cupons e links
+  para o WooCommerce. Abre ao clicar no nome em qualquer tabela.
+* Aba Pedidos: explorador com itens exatos, busca por nº, cliente, e-mail ou
+  produto; formas de pagamento (com e sem HPOS) e desempenho de cupons.
+* Gráfico de evolução com o período comparado sobreposto, unidade automática
+  (hora, dia, semana ou mês) e seletor de indicador.
+* Novos indicadores: novos clientes, itens por pedido, frete, descontos e
+  reembolsos; sparkline nos principais.
+* Mapa de calor dia × hora e quadro de status com todos os pedidos, inclusive os
+  que o Analytics não soma.
+* CSV protegido contra execução de fórmula no Excel.
+* A aba aberta é lembrada ao trocar de filtro.
 
 = 1.2.0 =
 * Períodos em dias inteiros. A janela antes terminava no instante atual e
