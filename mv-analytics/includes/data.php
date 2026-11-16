@@ -586,6 +586,7 @@ function mv_an_build_view_data( $args ) {
 		'basket'        => $basket,
 		'gaps'          => $gaps,
 		'opportunities' => mv_an_opportunities( $range, $args, $basket, $gaps ),
+		'attribution'   => mv_an_attribution( $range, $args ),
 	] );
 }
 

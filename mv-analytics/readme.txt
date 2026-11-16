@@ -4,7 +4,7 @@ Tags: woocommerce, analytics, clientes, upsell, relatorios
 Requires at least: 5.8
 Tested up to: 6.6
 Requires PHP: 7.2
-Stable tag: 1.3.0
+Stable tag: 1.5.0
 License: GPLv2 or later
 
 Painel de clientes, vendas e oportunidades de upselling para a loja da Multi Vegetal.
@@ -66,6 +66,28 @@ depois de uma mudança de período é o mais lento; os seguintes vêm do cache.
 O botão "Recalcular agora" limpa e refaz.
 
 == Changelog ==
+
+= 1.5.0 =
+* Botão "Gerar PDF" no cabeçalho: monta o relatório inteiro (todas as abas,
+  uma por página, A4 paisagem) no recorte de período, comparação e categoria
+  da tela e abre a impressão do navegador — escolha "Salvar como PDF".
+* Os exploradores de clientes e de pedidos entram com a página carregada
+  (25 linhas); o CSV continua sendo o caminho para a lista completa.
+* Ctrl+P também imprime o relatório completo, sem a casca do wp-admin.
+
+= 1.4.0 =
+* Nova aba Origem: receita, pedidos e ticket por tipo de tráfego (pago,
+  orgânico, direto, sem dado), por canal e por plataforma (Instagram, Google,
+  Facebook, WhatsApp, e-mail…), com Instagram pago e orgânico lado a lado.
+* Lê a "Origem do pedido" que o próprio WooCommerce (8.5+) grava no checkout,
+  com e sem HPOS. Nada é rastreado pelo plugin.
+* Por canal: clientes novos, taxa de recompra e valor na vida de quem estreou
+  por ali, e visitas até a compra.
+* Campanhas (utm_campaign), páginas de entrada, dispositivo e evolução no tempo.
+* Explorador de pedidos com coluna e filtro de origem; ficha do cliente com o
+  canal de aquisição e a origem de cada compra; CSV de pedidos com 8 colunas de
+  origem, incluindo o motivo da classificação.
+* Guia de UTM para Meta Ads, Google Ads, bio do Instagram, WhatsApp e e-mail.
 
 = 1.3.0 =
 * O período passa a ser recortado pela mesma "Tipo de data" do WooCommerce

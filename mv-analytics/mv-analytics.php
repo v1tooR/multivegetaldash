@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Multivegetal Analytics
  * Description: Painel de análise de clientes, vendas e oportunidades de upselling para a loja WooCommerce da Multi Vegetal, seguindo o Design System Multivegetal.
- * Version:     1.3.0
+ * Version:     1.5.0
  * Author:      Multivegetal
  * Text Domain: mv-analytics
  * Requires PHP: 7.2
@@ -11,7 +11,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'MV_AN_VERSION', '1.3.0' );
+define( 'MV_AN_VERSION', '1.5.0' );
 define( 'MV_AN_FILE', __FILE__ );
 define( 'MV_AN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'MV_AN_URL', plugin_dir_url( __FILE__ ) );
@@ -35,6 +35,7 @@ function mv_an_required_files() {
 		'includes/upsell.php',
 		'includes/customers.php',
 		'includes/orders.php',
+		'includes/attribution.php',
 		'includes/render.php',
 		'assets/dashboard.css',
 		'assets/dashboard.js',
@@ -421,17 +422,21 @@ add_action( 'admin_post_mv_an_export', function () {
 		/* Sem wc_get_order() por linha: numa exportação de milhares de
 		   pedidos isso carregaria cada objeto. Fica só o que o lookup tem. */
 		$list = mv_an_order_list( $range, $args, mv_an_order_query_args(), mv_an_export_max(), false );
+		$dev  = [ 'mobile' => 'Celular', 'desktop' => 'Computador', 'tablet' => 'Tablet' ];
 		$out  = mv_an_csv_open( 'pedidos' );
-		mv_an_csv_row( $out, [ 'Pedido', 'Data', 'Status', 'Cliente', 'E-mail', 'Local', 'Tipo', 'Nº de compras do cliente', 'Itens', 'Produtos', 'Frete', 'Impostos', 'Líquido', 'Total' ] );
+		mv_an_csv_row( $out, [ 'Pedido', 'Data', 'Status', 'Cliente', 'E-mail', 'Local', 'Tipo', 'Nº de compras do cliente', 'Itens', 'Produtos', 'Frete', 'Impostos', 'Líquido', 'Total', 'Origem', 'Canal', 'Fonte', 'utm_medium', 'Campanha', 'Página de entrada', 'Dispositivo', 'Motivo da classificação' ] );
 		foreach ( $list['rows'] as $r ) {
 			$prods = [];
 			foreach ( $r['lines'] as $l ) {
 				$prods[] = $l['qty'] . 'x ' . $l['name'];
 			}
+			$o = $r['origin'];
 			mv_an_csv_row( $out, [
 				$r['number'], $r['date'], $r['statusLbl'], $r['customer'], $r['email'], $r['location'],
 				$r['returning'] ? 'Recorrente' : 'Novo', $r['lifeOrders'], $r['items'], implode( ' | ', $prods ),
 				mv_an_csv_money( $r['shipping'] ), mv_an_csv_money( $r['tax'] ), mv_an_csv_money( $r['net'] ), mv_an_csv_money( $r['total'] ),
+				$o ? $o['groupLbl'] : '', $o ? $o['channelLbl'] : '', $o ? $o['sourceLbl'] : '', $o ? $o['medium'] : '',
+				$o ? $o['campaign'] : '', $o ? $o['entry'] : '', $o && $o['device'] ? $dev[ $o['device'] ] : '', $o ? $o['reason'] : '',
 			] );
 		}
 		fclose( $out );

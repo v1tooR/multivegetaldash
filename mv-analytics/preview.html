@@ -100,6 +100,7 @@
 				</select>
 
 				<button type="button" class="mv-an-btn mv-an-btn--onhead" data-mv="refresh">Recalcular agora</button>
+				<button type="button" class="mv-an-btn mv-an-btn--accent" data-mv="pdf" title="Abre a impressão com todas as abas do relatório — escolha “Salvar como PDF”.">Gerar PDF</button>
 			</form>
 		</header>
 
@@ -116,6 +117,7 @@
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p1" aria-controls="mv-p1">Visão geral</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p5" aria-controls="mv-p5">Clientes</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p6" aria-controls="mv-p6">Pedidos</button>
+			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p7" aria-controls="mv-p7">Origem</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p2" aria-controls="mv-p2">Novos vs. Antigos</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p3" aria-controls="mv-p3">Produtos</button>
 			<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p4" aria-controls="mv-p4">Upselling</button>
@@ -263,6 +265,92 @@
 							<p class="mv-an-card__hint">“1ª compra” é a fatia dos pedidos com o cupom que vieram de cliente novo. Cupom que só pega recorrente não está trazendo ninguém — está dando desconto a quem já compraria.</p>
 						</div>
 						<div class="mv-an-card__body"><div data-mv="coupons"></div></div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ===== 7. ORIGEM ===== -->
+		<section class="mv-an-panel" id="mv-p7" role="tabpanel" tabindex="0" hidden>
+			<div data-mv="attr-notice"></div>
+			<div class="mv-an-grid">
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Pago, orgânico ou direto</h2>
+							<p class="mv-an-card__hint">Fatia da receita do período por tipo de tráfego, lida da Origem do pedido que o WooCommerce grava no checkout. A receita aqui fecha com o card Vendas totais: reembolsos abatem do canal do pedido original.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="attr-groups"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head" data-mv="attr-toggle">
+							<h2 class="mv-an-card__title">Evolução da receita por origem</h2>
+							<p class="mv-an-card__hint">Mesmo eixo de tempo da Visão geral. Se a faixa cinza (sem dado) encolhe com o tempo, é a marcação de UTM e o recurso de origem entrando em vigor.</p>
+						</div>
+						<div class="mv-an-card__body"><div class="mv-an-legend" data-mv="attr-legend"></div><div class="mv-an-chart" data-mv="attr-chart"></div><div data-mv="attr-table"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-7">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">De onde vêm as vendas</h2>
+							<p class="mv-an-card__hint">Receita por plataforma, separando o que veio de anúncio do que veio de forma orgânica. É aqui que aparece Instagram pago × Instagram orgânico.</p>
+						</div>
+						<div class="mv-an-card__body"><div class="mv-an-legend"><span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--paid"></i>Pago</span><span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--organic"></i>Orgânico</span></div><div data-mv="attr-sources"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-5">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Dispositivo</h2>
+							<p class="mv-an-card__hint">Celular ou computador no momento da compra. Só pedidos com dado de origem.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="attr-devices"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Canais: quem traz cliente novo e quem traz cliente que volta</h2>
+							<p class="mv-an-card__hint">Clientes novos = 1ª compra da vida feita pelo canal no período. Recompra = desses clientes, quantos já compraram de novo (histórico completo). Valor na vida = gasto médio total de quem estreou pelo canal. Visitas até comprar vem da contagem de sessões do WooCommerce.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="attr-channels"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-12">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Campanhas</h2>
+							<p class="mv-an-card__hint">Pelo utm_campaign dos links. Campanha com ticket alto mas poucos clientes novos está vendendo para quem já é cliente — vale comparar com o custo no Gerenciador de Anúncios.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="attr-campaigns"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-6">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Páginas de entrada</h2>
+							<p class="mv-an-card__hint">A primeira página que o cliente abriu na visita em que comprou.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="attr-entries"></div></div>
+					</div>
+				</div>
+
+				<div class="mv-an-col-6">
+					<div class="mv-an-card">
+						<div class="mv-an-card__head">
+							<h2 class="mv-an-card__title">Padrão de UTM recomendado</h2>
+							<p class="mv-an-card__hint">Sem UTM, Instagram orgânico costuma chegar como Direto (o navegador do app esconde a origem) e anúncio da Meta pode parecer orgânico. Use estes padrões e a classificação fica exata.</p>
+						</div>
+						<div class="mv-an-card__body"><div data-mv="attr-utm"></div></div>
 					</div>
 				</div>
 			</div>
@@ -732,6 +820,131 @@ window.MV_AN_DATA = {
 		customers.push( c );
 	}
 
+
+	/* ---- Origem das vendas (v1.4) ----
+	   Perfis já classificados pela regra do PHP (mv_an_attr_classify).
+	   A loja "ligou" a origem em 15/03/2026: antes disso, Sem dado. */
+	var ORIG = [
+		{ w: 22, o: { group: 'paid', groupLbl: 'Pago', channel: 'paid_social', channelLbl: 'Anúncio em rede social', source: 'instagram', sourceLbl: 'Instagram', medium: 'paid_social', campaign: 'lancamento_oleos', entry: '/produto/oleo-de-ricino/', device: 'mobile', sessions: 2, reason: 'utm_medium = paid_social' } },
+		{ w: 6,  o: { group: 'paid', groupLbl: 'Pago', channel: 'paid_social', channelLbl: 'Anúncio em rede social', source: 'facebook', sourceLbl: 'Facebook', medium: 'paid_social', campaign: 'remarketing_carrinho', entry: '/carrinho/', device: 'mobile', sessions: 4, reason: 'utm_medium = paid_social' } },
+		{ w: 9,  o: { group: 'paid', groupLbl: 'Pago', channel: 'paid_search', channelLbl: 'Anúncio no Google / busca', source: 'google', sourceLbl: 'Google', medium: 'cpc', campaign: '21843307711', entry: '/produto/manteiga-de-karite/', device: 'desktop', sessions: 2, reason: 'gclid no link de entrada (clique em anúncio)' } },
+		{ w: 14, o: { group: 'organic', groupLbl: 'Orgânico', channel: 'social', channelLbl: 'Rede social orgânica', source: 'instagram', sourceLbl: 'Instagram', medium: 'social', campaign: 'bio', entry: '/', device: 'mobile', sessions: 3, reason: 'utm_medium = social' } },
+		{ w: 12, o: { group: 'organic', groupLbl: 'Orgânico', channel: 'search', channelLbl: 'Busca orgânica', source: 'google', sourceLbl: 'Google', medium: 'organic', campaign: '', entry: '/blog/oleo-de-ricino-para-cabelo/', device: 'desktop', sessions: 3, reason: 'Busca orgânica no Google' } },
+		{ w: 6,  o: { group: 'organic', groupLbl: 'Orgânico', channel: 'messaging', channelLbl: 'WhatsApp / mensagem', source: 'whatsapp', sourceLbl: 'WhatsApp', medium: 'mensagem', campaign: 'lista_vip', entry: '/categoria/kits/', device: 'mobile', sessions: 2, reason: 'utm_medium = mensagem' } },
+		{ w: 4,  o: { group: 'organic', groupLbl: 'Orgânico', channel: 'email', channelLbl: 'E-mail / CRM', source: 'email', sourceLbl: 'E-mail', medium: 'email', campaign: 'newsletter_setembro', entry: '/categoria/oleos-vegetais/', device: 'desktop', sessions: 5, reason: 'utm_medium = email' } },
+		{ w: 18, o: { group: 'direct', groupLbl: 'Direto', channel: 'direct', channelLbl: 'Direto', source: '', sourceLbl: '', medium: '', campaign: '', entry: '/', device: 'mobile', sessions: 5, reason: 'Acesso direto (endereço digitado, favorito ou app que esconde a origem)' } },
+		{ w: 9,  o: { group: 'none', groupLbl: 'Sem dado', channel: 'unknown', channelLbl: 'Sem dado de origem', source: '', sourceLbl: '', medium: '', campaign: '', entry: '', device: '', sessions: null, reason: 'Pedido sem dado de origem' } }
+	];
+	var ORIG_SINCE = new Date( 2026, 2, 15 ).getTime();
+	var ORIG_W = ORIG.reduce( function ( a, p ) { return a + p.w; }, 0 );
+	function pickOrigin() {
+		var x = rnd() * ORIG_W;
+		for ( var i = 0; i < ORIG.length; i++ ) { x -= ORIG[ i ].w; if ( x < 0 ) return ORIG[ i ].o; }
+		return ORIG[ ORIG.length - 1 ].o;
+	}
+	orders.forEach( function ( o ) { o.origin = o.ts >= ORIG_SINCE ? pickOrigin() : ORIG[ ORIG.length - 1 ].o; } );
+	customers.forEach( function ( c ) {
+		var f = c.orders[ c.orders.length - 1 ].origin;
+		c.acquisition = f.channel !== 'unknown' ? f : null;
+		var by = {};
+		c.orders.forEach( function ( o ) {
+			if ( o.origin.channel === 'unknown' ) return;
+			var k = o.origin.groupLbl + ' · ' + ( o.origin.sourceLbl || o.origin.channelLbl );
+			var e = by[ k ] || ( by[ k ] = { label: k, group: o.origin.group, orders: 0, revenue: 0 } );
+			e.orders++; e.revenue = r2( e.revenue + o.total );
+		} );
+		c.origins = Object.keys( by ).map( function ( k ) { return by[ k ]; } ).sort( function ( a, b ) { return b.orders - a.orders; } );
+	} );
+
+	/* Agregado na escala dos KPIs: cada mês da série reparte a receita. */
+	var MIX = { paid: 0.355, organic: 0.37, direct: 0.18, none: 0.095 };
+	var monthTs = [ 2025, 9 ];
+	D.attribution = ( function () {
+		var series = rows.map( function ( r, i ) {
+			var m = new Date( 2025, 9 + i, 1 ).getTime();
+			var on = m >= new Date( 2026, 3, 1 ).getTime() ? 1 : m >= new Date( 2026, 2, 1 ).getTime() ? 0.55 : 0;
+			var jitter = 0.9 + rnd() * 0.2;
+			var paid = Math.round( r.revenue * MIX.paid * on * jitter );
+			var org  = Math.round( r.revenue * MIX.organic * on );
+			var dir  = Math.round( r.revenue * MIX.direct * on );
+			return { label: r.label, paid: paid, organic: org, direct: dir, none: r.revenue - paid - org - dir };
+		} );
+		var tot = { paid: 0, organic: 0, direct: 0, none: 0 }, all = 0;
+		series.forEach( function ( s ) { for ( var k in tot ) { tot[ k ] += s[ k ]; all += s[ k ]; } } );
+		var meta = {
+			paid:    { label: 'Pago',     ticket: 151.2, newPct: 58, sessions: 2.4 },
+			organic: { label: 'Orgânico', ticket: 139.8, newPct: 41, sessions: 3.1 },
+			direct:  { label: 'Direto',   ticket: 128.4, newPct: 19, sessions: 5.2 },
+			none:    { label: 'Sem dado', ticket: 133.9, newPct: 30, sessions: null }
+		};
+		var groups = Object.keys( tot ).map( function ( k ) {
+			var orders = Math.round( tot[ k ] * 0.878 / meta[ k ].ticket );
+			return { key: k, label: meta[ k ].label, orders: orders, revenue: tot[ k ], net: Math.round( tot[ k ] * 0.878 ),
+				ticket: meta[ k ].ticket, share: Math.round( tot[ k ] / all * 1000 ) / 10, newPct: meta[ k ].newPct,
+				customers: Math.round( orders * 0.86 ), newCustomers: Math.round( orders * meta[ k ].newPct / 100 ), sessions: meta[ k ].sessions };
+		} );
+		var G = {}; groups.forEach( function ( g ) { G[ g.key ] = g; } );
+		function ch( key, label, g, part, ticket, newPct, rep, ltv, sess ) {
+			var rev = Math.round( G[ g ].revenue * part ), orders = Math.round( rev * 0.878 / ticket );
+			var acq = Math.round( orders * newPct / 100 );
+			return { key: key, label: label, group: g, groupLbl: G[ g ].label, orders: orders, revenue: rev, net: Math.round( rev * 0.878 ),
+				ticket: ticket, share: Math.round( rev / all * 1000 ) / 10, customers: Math.round( orders * 0.86 ), newCustomers: acq,
+				newPct: newPct, sessions: sess, acquired: acq, repeatPct: rep, ltv: ltv };
+		}
+		var channels = [
+			ch( 'paid_social', 'Anúncio em rede social', 'paid', 0.74, 148.9, 63, 22.4, 214.3, 2.2 ),
+			ch( 'paid_search', 'Anúncio no Google / busca', 'paid', 0.26, 158.1, 46, 34.8, 298.6, 2.9 ),
+			ch( 'social', 'Rede social orgânica', 'organic', 0.38, 131.5, 44, 36.1, 287.0, 3.4 ),
+			ch( 'search', 'Busca orgânica', 'organic', 0.34, 149.7, 52, 39.5, 331.2, 2.6 ),
+			ch( 'messaging', 'WhatsApp / mensagem', 'organic', 0.18, 142.3, 21, 51.7, 402.8, 2.1 ),
+			ch( 'email', 'E-mail / CRM', 'organic', 0.10, 136.0, 6, 63.2, 512.4, 4.8 ),
+			ch( 'direct', 'Direto', 'direct', 1, 128.4, 19, 44.9, 365.1, 5.2 ),
+			ch( 'unknown', 'Sem dado de origem', 'none', 1, 133.9, 30, null, null, null )
+		];
+		function src( key, label, paid, org ) {
+			var p = { orders: Math.round( paid / 150 ), revenue: paid }, o = { orders: Math.round( org / 140 ), revenue: org };
+			return { key: key, label: label, paid: p, organic: o, orders: p.orders + o.orders, revenue: paid + org,
+				share: Math.round( ( paid + org ) / all * 1000 ) / 10 };
+		}
+		var P = G.paid.revenue, O = G.organic.revenue;
+		var sources = [
+			src( 'instagram', 'Instagram', Math.round( P * 0.6 ), Math.round( O * 0.33 ) ),
+			src( 'google', 'Google', Math.round( P * 0.26 ), Math.round( O * 0.34 ) ),
+			src( 'facebook', 'Facebook', Math.round( P * 0.14 ), Math.round( O * 0.05 ) ),
+			src( 'whatsapp', 'WhatsApp', 0, Math.round( O * 0.18 ) ),
+			src( 'email', 'E-mail', 0, Math.round( O * 0.10 ) )
+		].sort( function ( a, b ) { return b.revenue - a.revenue; } );
+		function camp( name, srcL, medium, g, rev, ticket, newPct ) {
+			var orders = Math.round( rev * 0.878 / ticket );
+			return { campaign: name, source: srcL, medium: medium, group: g, groupLbl: G[ g ].label, orders: orders, revenue: rev,
+				ticket: ticket, newCustomers: Math.round( orders * newPct / 100 ), newPct: newPct };
+		}
+		var campaigns = [
+			camp( 'lancamento_oleos', 'Instagram', 'paid_social', 'paid', Math.round( P * 0.31 ), 152.4, 71 ),
+			camp( 'remarketing_carrinho', 'Facebook', 'paid_social', 'paid', Math.round( P * 0.14 ), 171.9, 12 ),
+			camp( '21843307711', 'Google', 'cpc', 'paid', Math.round( P * 0.17 ), 158.1, 46 ),
+			camp( 'bio', 'Instagram', 'social', 'organic', Math.round( O * 0.21 ), 129.8, 47 ),
+			camp( 'lista_vip', 'WhatsApp', 'mensagem', 'organic', Math.round( O * 0.15 ), 142.3, 8 ),
+			camp( 'newsletter_setembro', 'E-mail', 'email', 'organic', Math.round( O * 0.06 ), 136.0, 5 )
+		].sort( function ( a, b ) { return b.revenue - a.revenue; } );
+		var withData = all - tot.none;
+		var devices = [
+			{ key: 'mobile', label: 'Celular', orders: Math.round( withData * 0.72 / 132 ), revenue: Math.round( withData * 0.72 ), ticket: 132.1 },
+			{ key: 'desktop', label: 'Computador', orders: Math.round( withData * 0.25 / 158 ), revenue: Math.round( withData * 0.25 ), ticket: 158.4 },
+			{ key: 'tablet', label: 'Tablet', orders: Math.round( withData * 0.03 / 141 ), revenue: Math.round( withData * 0.03 ), ticket: 141.0 }
+		];
+		var entries = [
+			[ '/', 0.27, 'Direto' ], [ '/produto/oleo-de-ricino/', 0.16, 'Pago' ], [ '/blog/oleo-de-ricino-para-cabelo/', 0.09, 'Orgânico' ],
+			[ '/produto/manteiga-de-karite/', 0.07, 'Pago' ], [ '/categoria/kits/', 0.06, 'Orgânico' ], [ '/carrinho/', 0.04, 'Pago' ]
+		].map( function ( e ) { var rev = Math.round( withData * e[ 1 ] ); return { path: e[ 0 ], mainGroup: e[ 2 ], orders: Math.round( rev / 140 ), revenue: rev }; } );
+		var ordersAll = groups.reduce( function ( a, g ) { return a + g.orders; }, 0 );
+		return {
+			enabled: true, settingsUrl: '#', since: '15/03/2026',
+			coverage: { orders: ordersAll, with: ordersAll - G.none.orders, pct: Math.round( ( ordersAll - G.none.orders ) / ordersAll * 1000 ) / 10 },
+			groups: groups, channels: channels, sources: sources, campaigns: campaigns, devices: devices, entries: entries, series: series
+		};
+	} )();
+
 	/* Período da tela no preview: últimos 12 meses. */
 	var PSTART = new Date( 2025, 9, 1 ).getTime();
 	function inPeriod( o ) { return o.ts >= PSTART; }
@@ -790,6 +1003,12 @@ window.MV_AN_DATA = {
 				if ( p.status && o.status !== p.status ) return false;
 				if ( p.type === 'new' && o.returning ) return false;
 				if ( p.type === 'returning' && ! o.returning ) return false;
+				if ( p.origin ) {
+					var kv = p.origin.split( ':' );
+					if ( kv[ 0 ] === 'g' && o.origin.group !== kv[ 1 ] ) return false;
+					if ( kv[ 0 ] === 'c' && o.origin.channel !== kv[ 1 ] ) return false;
+					if ( kv[ 0 ] === 's' && o.origin.source !== kv[ 1 ] ) return false;
+				}
 				return ! q || String( o.id ) === q.replace( '#', '' ) || like( o.customer, q ) || like( o.email, q ) ||
 					o.lines.some( function ( l ) { return like( l.name, q ); } );
 			} );
@@ -835,6 +1054,7 @@ window.MV_AN_DATA = {
 				products: Object.keys( prod ).map( function ( k ) { return prod[ k ]; } ).sort( function ( a, b ) { return b.orders - a.orders || b.revenue - a.revenue; } ),
 				coupons: Object.keys( cps ).map( function ( k ) { return cps[ k ]; } ),
 				orders: c.orders,
+				acquisition: c.acquisition, origins: c.origins,
 				links: [ { label: 'Pedidos no WooCommerce', url: '#' }, { label: 'Ver no Analytics', url: '#' } ]
 			};
 		}

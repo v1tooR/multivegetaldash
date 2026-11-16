@@ -748,6 +748,17 @@
 		return el( 'span', { class: 'mv-an-badge mv-an-badge--seg-' + ( SEG_TONE[ seg ] || 'ghost' ) }, label );
 	}
 
+	/* Origem do pedido: grupo (cor) + fonte. O motivo da regra vai no
+	   title, para conferir por que o pedido caiu ali. */
+	function originBadge( o ) {
+		if ( ! o ) return el( 'span', { class: 'mv-an-obadge' }, 'Sem dado' );
+		var txt = o.channel === 'unknown' ? 'Sem dado'
+			: o.groupLbl + ( o.sourceLbl ? ' · ' + o.sourceLbl : ( o.channel === 'manual' ? ' · manual' : '' ) );
+		return el( 'span', { class: 'mv-an-obadge mv-an-obadge--' + o.group, title: o.channelLbl + ' — ' + o.reason }, txt );
+	}
+
+	var ORIGIN_ORDER = [ 'paid', 'organic', 'direct', 'none' ];
+
 	function typeBadge( returning ) {
 		return el( 'span', { class: 'mv-an-badge mv-an-badge--' + ( returning ? 'ghost' : 'accent' ) }, returning ? 'Recorrente' : 'Novo' );
 	}
@@ -808,7 +819,17 @@
 	/* ── AJAX ─────────────────────────────────────────────────
 	   GET com os filtros da tela + os do explorador. No preview não
 	   há MV_AN_CFG: o MV_AN_MOCK responde com dados fictícios. */
-	function api( action, params, cb ) {
+	/* Consultas em andamento: o "Gerar PDF" espera zerar antes de abrir
+	   a impressão, senão os exploradores sairiam no papel ainda vazios. */
+	var inflight = 0;
+
+	function api( action, params, done ) {
+		var settled = false;
+		inflight++;
+		var cb = function ( err, data ) {
+			if ( ! settled ) { settled = true; inflight--; }
+			done( err, data );
+		};
 		var CFG = window.MV_AN_CFG;
 		if ( ! CFG ) {
 			if ( typeof window.MV_AN_MOCK !== 'function' ) return cb( new Error( 'Indisponível fora do WordPress.' ) );
@@ -997,7 +1018,7 @@
 		var table = el( 'table', { class: 'mv-an-table mv-an-table--orders' } );
 		var thead = el( 'thead' );
 		var htr   = el( 'tr' );
-		[ [ '', '' ], [ 'Pedido', '' ], [ 'Data', '' ], [ 'Cliente', '' ], [ 'Tipo', '' ], [ 'Status', '' ],
+		[ [ '', '' ], [ 'Pedido', '' ], [ 'Data', '' ], [ 'Cliente', '' ], [ 'Tipo', '' ], [ 'Origem', '' ], [ 'Status', '' ],
 		  [ 'Itens', 'is-num' ], [ 'Pagamento', '' ], [ 'Total', 'is-num' ] ].forEach( function ( h ) {
 			htr.appendChild( el( 'th', { scope: 'col', class: h[ 1 ] || null }, h[ 0 ] ) );
 		} );
@@ -1022,6 +1043,7 @@
 			td( stackCell( custLink( o.customerId, o.customer ),
 				o.lifeOrders ? 'Total de ' + plural( o.lifeOrders, 'compra', 'compras' ) : o.email ) );
 			td( typeBadge( o.returning ) );
+			td( stackCell( originBadge( o.origin ), o.origin && o.origin.campaign ? o.origin.campaign : null ) );
 			td( statusBadge( o.status, o.statusLbl ) );
 			td( fmtNum( o.items ), 'is-num' );
 			td( o.payment || '—', 'is-muted' );
@@ -1030,7 +1052,7 @@
 
 			/* Linha de detalhe: itens exatos + composição do valor. */
 			var sub  = el( 'tr', { class: 'mv-an-subrow', hidden: '' } );
-			var cell = el( 'td', { colspan: 9 } );
+			var cell = el( 'td', { colspan: 10 } );
 			var grid = el( 'div', { class: 'mv-an-subrow__grid' } );
 			grid.appendChild( orderLines( o.lines ) );
 			var dl = el( 'dl', { class: 'mv-an-facts' } );
@@ -1040,7 +1062,11 @@
 				[ 'Impostos', fmtMoney2( o.tax ) ],
 				[ 'Desconto', o.discount ? '− ' + fmtMoney2( o.discount ) : '—' ],
 				[ 'Cupons', o.coupons && o.coupons.length ? o.coupons.join( ', ' ) : '—' ],
-				[ 'Local', o.location || '—' ]
+				[ 'Local', o.location || '—' ],
+				[ 'Origem', o.origin && o.origin.channel !== 'unknown' ? o.origin.channelLbl + ( o.origin.sourceLbl ? ' · ' + o.origin.sourceLbl : '' ) : 'Sem dado de origem' ],
+				[ 'Campanha', o.origin && o.origin.campaign ? o.origin.campaign : '—' ],
+				[ 'Entrou por', o.origin && o.origin.entry ? o.origin.entry : '—' ],
+				[ 'Por que', o.origin ? o.origin.reason : '—' ]
 			].forEach( function ( f ) {
 				dl.appendChild( el( 'dt', {}, f[ 0 ] ) );
 				dl.appendChild( el( 'dd', {}, f[ 1 ] ) );
@@ -1154,6 +1180,11 @@
 		badges.appendChild( segBadge( c.segment, c.segLabel ) );
 		badges.appendChild( el( 'span', { class: 'mv-an-badge mv-an-badge--ghost' },
 			c.guest ? 'Compra como convidado' : 'Cadastrado' + ( c.registered ? ' desde ' + c.registered : '' ) ) );
+		if ( c.acquisition ) {
+			var acq = originBadge( c.acquisition );
+			acq.textContent = 'Chegou por: ' + acq.textContent;
+			badges.appendChild( acq );
+		}
 		head.appendChild( badges );
 		if ( c.links && c.links.length ) {
 			var links = el( 'div', { class: 'mv-an-dhead__links' } );
@@ -1211,6 +1242,16 @@
 			], c.products );
 		}
 
+		if ( c.origins && c.origins.length ) {
+			var sor = section( host, 'De onde vieram as compras' );
+			var och = el( 'div', { class: 'mv-an-chips' } );
+			c.origins.forEach( function ( k ) {
+				och.appendChild( el( 'span', { class: 'mv-an-obadge mv-an-obadge--' + k.group },
+					k.label + ' · ' + plural( k.orders, 'compra', 'compras' ) + ' · ' + fmtMoney( k.revenue ) ) );
+			} );
+			sor.appendChild( och );
+		}
+
 		if ( c.coupons && c.coupons.length ) {
 			var sc = section( host, 'Cupons usados' );
 			var chips = el( 'div', { class: 'mv-an-chips' } );
@@ -1230,12 +1271,242 @@
 			top.appendChild( orderLink( o ) );
 			top.appendChild( el( 'span', { class: 'mv-an-history__date' }, o.date ) );
 			top.appendChild( statusBadge( o.status, o.statusLbl ) );
+			if ( o.origin && o.origin.channel !== 'unknown' ) top.appendChild( originBadge( o.origin ) );
 			top.appendChild( el( 'strong', { class: 'mv-an-history__total' }, fmtMoney2( o.total ) ) );
 			li.appendChild( top );
 			li.appendChild( orderLines( o.lines ) );
 			list.appendChild( li );
 		} );
 		so.appendChild( list );
+	}
+
+	/* ============================================================
+	   ORIGEM DAS VENDAS
+	   ============================================================ */
+	function originOptions( A ) {
+		var out = [ [ '', 'Todas as origens' ],
+			[ 'g:paid', 'Pago (anúncios)' ], [ 'g:organic', 'Orgânico' ], [ 'g:direct', 'Direto' ], [ 'g:none', 'Sem dado' ] ];
+		if ( A && A.channels ) A.channels.forEach( function ( c ) {
+			if ( c.key !== 'direct' && c.key !== 'unknown' ) out.push( [ 'c:' + c.key, 'Canal: ' + c.label ] );
+		} );
+		if ( A && A.sources ) A.sources.forEach( function ( s ) { out.push( [ 's:' + s.key, 'Fonte: ' + s.label ] ); } );
+		return out;
+	}
+
+	var UTM_GUIDE = [
+		[ 'Anúncios da Meta (Instagram e Facebook)',
+		  'Gerenciador de Anúncios → anúncio → Rastreamento → Parâmetros de URL. Os {{ }} a Meta preenche sozinha.',
+		  [ 'utm_source={{site_source_name}}&utm_medium=paid_social&utm_campaign={{campaign.name}}&utm_content={{ad.name}}' ] ],
+		[ 'Google Ads',
+		  'Deixe a marcação automática (gclid) ligada: com ela o pedido já entra como pago. Para separar por campanha, adicione no Sufixo do URL final da conta (o Google troca {campaignid} pelo ID da campanha):',
+		  [ 'utm_source=google&utm_medium=cpc&utm_campaign={campaignid}&utm_term={keyword}' ] ],
+		[ 'Link da bio do Instagram',
+		  'O navegador do Instagram costuma esconder a origem — sem isto, a venda cai em Direto.',
+		  [ '?utm_source=instagram&utm_medium=social&utm_campaign=bio' ] ],
+		[ 'Stories, posts e Reels orgânicos',
+		  'Troque o utm_campaign pelo nome do conteúdo para comparar um com o outro.',
+		  [ '?utm_source=instagram&utm_medium=social&utm_campaign=stories_lancamento' ] ],
+		[ 'WhatsApp e e-mail',
+		  'Lista de transmissão, atendimento e newsletter.',
+		  [ '?utm_source=whatsapp&utm_medium=mensagem&utm_campaign=lista_vip', '?utm_source=newsletter&utm_medium=email&utm_campaign=black_friday' ] ]
+	];
+
+	function buildAttribution( root, A ) {
+		var $ = function ( sel ) { return root.querySelector( sel ); };
+		var groupLbl = {};
+		( A.groups || [] ).forEach( function ( g ) { groupLbl[ g.key ] = g.label; } );
+
+		/* Aviso de cobertura: explica por que parte dos pedidos é "sem dado". */
+		var nHost = $( '[data-mv="attr-notice"]' );
+		var cov   = A.coverage || { orders: 0, with: 0, pct: 0 };
+		if ( nHost && cov.orders ) {
+			var box = el( 'div', { class: 'mv-an-notice' + ( cov.with && A.enabled ? ' mv-an-notice--info' : '' ) } );
+			box.appendChild( el( 'span', { 'aria-hidden': 'true' }, cov.with && A.enabled ? 'ℹ' : '⚠' ) );
+			var txt = el( 'span' );
+			if ( ! A.enabled ) {
+				txt.appendChild( document.createTextNode( 'O recurso “Origem do pedido” está desligado no WooCommerce, então pedidos novos não registram de onde vieram. ' ) );
+				txt.appendChild( el( 'a', { href: A.settingsUrl, target: '_blank', rel: 'noopener' }, 'Ligar em WooCommerce → Configurações → Avançado → Recursos' ) );
+				txt.appendChild( document.createTextNode( '.' ) );
+			} else if ( ! cov.with ) {
+				txt.appendChild( document.createTextNode( 'Nenhum pedido deste período tem dado de origem. ' + ( A.since
+					? 'A loja tem origem registrada desde ' + A.since + ' — escolha um período a partir dessa data.'
+					: 'O WooCommerce grava a origem nos pedidos feitos pelo checkout a partir de agora; pedidos antigos, importados ou criados no painel não têm.' ) ) );
+			} else {
+				txt.appendChild( el( 'strong', {}, fmtNum( cov.with ) + ' de ' + plural( cov.orders, 'pedido', 'pedidos' ) + ' (' + fmtPct( cov.pct ) + ')' ) );
+				txt.appendChild( document.createTextNode( ' têm dado de origem' + ( A.since ? ', registrado desde ' + A.since : '' ) + '. ' +
+					( cov.pct < 100 ? 'O restante aparece como “Sem dado”: pedido anterior ao recurso, criado no painel ou com o rastreio bloqueado pelo navegador.' : '' ) ) );
+			}
+			box.appendChild( txt );
+			nHost.appendChild( box );
+		}
+
+		/* Blocos por grupo + barra 100%. */
+		var gHost = $( '[data-mv="attr-groups"]' );
+		if ( gHost ) {
+			if ( ! A.groups || ! A.groups.length ) empty( gHost );
+			else {
+				var tiles = el( 'div', { class: 'mv-an-otiles' } );
+				var mix   = el( 'div', { class: 'mv-an-mix', role: 'img',
+					'aria-label': 'Fatia da receita: ' + A.groups.map( function ( g ) { return g.label + ' ' + fmtPct( g.share ); } ).join( ', ' ) } );
+				A.groups.forEach( function ( g ) {
+					var t = el( 'div', { class: 'mv-an-otile' } );
+					var l = el( 'span', { class: 'mv-an-otile__label' } );
+					l.appendChild( el( 'i', { style: 'background:var(--mv-o-' + g.key + ')' } ) );
+					l.appendChild( document.createTextNode( g.label ) );
+					t.appendChild( l );
+					t.appendChild( el( 'span', { class: 'mv-an-otile__value' }, fmtMoney( g.revenue ) ) );
+					t.appendChild( el( 'span', { class: 'mv-an-otile__sub' }, fmtPct( g.share ) + ' da receita · ' + plural( g.orders, 'pedido', 'pedidos' ) ) );
+					t.appendChild( el( 'span', { class: 'mv-an-otile__sub' }, 'Ticket ' + fmtMoney2( g.ticket ) + ' · ' + fmtPct( g.newPct, 0 ) + ' de 1ª compra' ) );
+					tiles.appendChild( t );
+					if ( g.share > 0 ) {
+						var seg = el( 'span', { title: g.label + ': ' + fmtPct( g.share ) + ' · ' + fmtMoney( g.revenue ) } );
+						seg.style.flex = String( g.share );
+						seg.style.background = 'var(--mv-o-' + g.key + ')';
+						mix.appendChild( seg );
+					}
+				} );
+				gHost.appendChild( tiles );
+				gHost.appendChild( mix );
+			}
+		}
+
+		/* Evolução empilhada: pago embaixo, sem dado no topo. */
+		var cHost = $( '[data-mv="attr-chart"]' );
+		var tHost = $( '[data-mv="attr-table"]' );
+		if ( cHost && A.series ) {
+			var present = ORIGIN_ORDER.filter( function ( k ) { return groupLbl[ k ]; } );
+			var series  = present.map( function ( k ) {
+				return { key: k, label: groupLbl[ k ], cls: k, color: 'var(--mv-o-' + k + ')' };
+			} );
+			var leg = $( '[data-mv="attr-legend"]' );
+			if ( leg && series.length > 1 ) series.forEach( function ( sr ) {
+				var it = el( 'span', { class: 'mv-an-legend__item' } );
+				it.appendChild( el( 'i', { class: 'mv-an-legend__swatch mv-an-legend__swatch--' + sr.key } ) );
+				it.appendChild( document.createTextNode( sr.label ) );
+				leg.appendChild( it );
+			} );
+			if ( ! series.length ) empty( cHost );
+			else barChart( cHost, A.series, {
+				alt: 'Receita por período, separada entre pago, orgânico, direto e sem dado.',
+				series: series,
+				tipExtra: function ( r ) {
+					var tot = present.reduce( function ( a, k ) { return a + ( r[ k ] || 0 ); }, 0 );
+					return groupLbl.paid ? [ { key: '% pago', val: fmtPct( tot ? ( r.paid || 0 ) / tot * 100 : 0 ) } ] : [];
+				}
+			} );
+			var tcols = [ { label: 'Período', key: 'label', sortable: false } ];
+			present.forEach( function ( k ) {
+				tcols.push( { label: groupLbl[ k ], key: k, num: true, cell: function ( r ) { return fmtMoney( r[ k ] ); } } );
+			} );
+			buildTable( tHost, tcols, A.series );
+			attachToggle( $( '[data-mv="attr-toggle"]' ), cHost, tHost );
+		}
+
+		/* Fontes: pago | orgânico no mesmo trilho. */
+		var sHost = $( '[data-mv="attr-sources"]' );
+		if ( sHost ) {
+			if ( ! A.sources || ! A.sources.length ) empty( sHost, 'Nenhum pedido do período com fonte identificada.' );
+			else {
+				var max  = Math.max.apply( null, A.sources.map( function ( s ) { return s.revenue; } ) ) || 1;
+				var wrap = el( 'div', { class: 'mv-an-bars' } );
+				A.sources.forEach( function ( s ) {
+					var bar = el( 'div', { class: 'mv-an-bar' } );
+					bar.appendChild( el( 'span', { class: 'mv-an-bar__label', title: s.label }, s.label ) );
+					bar.appendChild( el( 'span', { class: 'mv-an-bar__value' }, fmtMoney( s.revenue ) + ' · ' + fmtPct( s.share ) ) );
+					var track = el( 'div', { class: 'mv-an-bar__track mv-an-bar__track--split' } );
+					[ [ 'paid', s.paid, 'Pago' ], [ 'organic', s.organic, 'Orgânico' ] ].forEach( function ( p ) {
+						if ( p[ 1 ].revenue <= 0 ) return;
+						var f = el( 'div', { class: 'mv-an-bar__fill mv-an-bar__fill--' + p[ 0 ], title: p[ 2 ] + ': ' + fmtMoney( p[ 1 ].revenue ) } );
+						f.style.width = ( p[ 1 ].revenue / max * 100 ).toFixed( 2 ) + '%';
+						track.appendChild( f );
+					} );
+					bar.appendChild( track );
+					var parts = [];
+					if ( s.paid.orders )    parts.push( 'pago ' + fmtMoney( s.paid.revenue ) + ' (' + plural( s.paid.orders, 'pedido', 'pedidos' ) + ')' );
+					if ( s.organic.orders ) parts.push( 'orgânico ' + fmtMoney( s.organic.revenue ) + ' (' + plural( s.organic.orders, 'pedido', 'pedidos' ) + ')' );
+					bar.appendChild( el( 'span', { class: 'mv-an-bar__sub' }, parts.join( ' · ' ) ) );
+					wrap.appendChild( bar );
+				} );
+				sHost.appendChild( wrap );
+			}
+		}
+
+		var dHost = $( '[data-mv="attr-devices"]' );
+		if ( dHost ) {
+			if ( ! A.devices || ! A.devices.length ) empty( dHost, 'Sem dado de dispositivo no período.' );
+			else hBars( dHost, A.devices.map( function ( d ) {
+				return { label: d.label, value: d.revenue, orders: d.orders, ticket: d.ticket };
+			} ), { format: function ( r ) { return fmtMoney( r.value ) + ' · ' + plural( r.orders, 'pedido', 'pedidos' ); } } );
+		}
+
+		var chHost = $( '[data-mv="attr-channels"]' );
+		if ( chHost && A.channels ) {
+			buildTable( chHost, [
+				{ label: 'Canal', key: 'label', cell: function ( r ) {
+					return stackCell( el( 'span', { class: 'mv-an-obadge mv-an-obadge--' + r.group }, r.label ), r.groupLbl );
+				} },
+				{ label: 'Pedidos', key: 'orders', num: true, cell: function ( r ) { return fmtNum( r.orders ); } },
+				{ label: 'Receita', key: 'revenue', num: true, cell: function ( r ) { return fmtMoney( r.revenue ); } },
+				{ label: 'Fatia', key: 'share', num: true, cell: function ( r ) { return shareCell( r.share ); } },
+				{ label: 'Ticket', key: 'ticket', num: true, cell: function ( r ) { return fmtMoney2( r.ticket ); } },
+				{ label: 'Clientes novos', key: 'acquired', num: true, cell: function ( r ) {
+					return stackCell( fmtNum( r.acquired ), fmtPct( r.newPct, 0 ) + ' dos pedidos' );
+				} },
+				{ label: 'Recompra', key: 'repeatPct', num: true, sortValue: function ( r ) { return r.repeatPct == null ? -1 : r.repeatPct; },
+					cell: function ( r ) { return r.repeatPct == null ? '—' : fmtPct( r.repeatPct ); } },
+				{ label: 'Valor na vida', key: 'ltv', num: true, sortValue: function ( r ) { return r.ltv || 0; },
+					cell: function ( r ) { return r.ltv == null ? '—' : fmtMoney2( r.ltv ); } },
+				{ label: 'Visitas até comprar', key: 'sessions', num: true, sortValue: function ( r ) { return r.sessions || 0; },
+					cell: function ( r ) { return r.sessions == null ? '—' : fmtDec( r.sessions ); } }
+			], A.channels );
+		}
+
+		var cpHost = $( '[data-mv="attr-campaigns"]' );
+		if ( cpHost ) {
+			if ( ! A.campaigns || ! A.campaigns.length ) empty( cpHost, 'Nenhum pedido do período veio de link com utm_campaign.' );
+			else buildTable( cpHost, [
+				{ label: 'Campanha', key: 'campaign', cell: function ( r ) { return el( 'code', { class: 'mv-an-code' }, r.campaign ); } },
+				{ label: 'Origem', key: 'groupLbl', cell: function ( r ) {
+					return stackCell( el( 'span', { class: 'mv-an-obadge mv-an-obadge--' + r.group }, r.groupLbl + ( r.source ? ' · ' + r.source : '' ) ),
+						r.medium ? 'utm_medium: ' + r.medium : null );
+				} },
+				{ label: 'Pedidos', key: 'orders', num: true, cell: function ( r ) { return fmtNum( r.orders ); } },
+				{ label: 'Receita', key: 'revenue', num: true, cell: function ( r ) { return fmtMoney( r.revenue ); } },
+				{ label: 'Ticket', key: 'ticket', num: true, cell: function ( r ) { return fmtMoney2( r.ticket ); } },
+				{ label: 'Clientes novos', key: 'newCustomers', num: true, cell: function ( r ) {
+					return stackCell( fmtNum( r.newCustomers ), fmtPct( r.newPct, 0 ) + ' dos pedidos' );
+				} }
+			], A.campaigns );
+		}
+
+		var eHost = $( '[data-mv="attr-entries"]' );
+		if ( eHost ) {
+			if ( ! A.entries || ! A.entries.length ) empty( eHost, 'Sem página de entrada registrada no período.' );
+			else buildTable( eHost, [
+				{ label: 'Página', key: 'path', cell: function ( r ) {
+					return stackCell( el( 'code', { class: 'mv-an-code' }, r.path ), 'mais pedidos via ' + r.mainGroup.toLowerCase() );
+				} },
+				{ label: 'Pedidos', key: 'orders', num: true, cell: function ( r ) { return fmtNum( r.orders ); } },
+				{ label: 'Receita', key: 'revenue', num: true, cell: function ( r ) { return fmtMoney( r.revenue ); } }
+			], A.entries );
+		}
+
+		var uHost = $( '[data-mv="attr-utm"]' );
+		if ( uHost ) {
+			var ul = el( 'div', { class: 'mv-an-utm' } );
+			UTM_GUIDE.forEach( function ( u ) {
+				var it = el( 'div', { class: 'mv-an-utm__item' } );
+				it.appendChild( el( 'h4', {}, u[ 0 ] ) );
+				it.appendChild( el( 'p', {}, u[ 1 ] ) );
+				u[ 2 ].forEach( function ( c ) {
+					var code = el( 'code', {}, c );
+					code.style.marginTop = '4px';
+					it.appendChild( code );
+				} );
+				ul.appendChild( it );
+			} );
+			uHost.appendChild( ul );
+		}
 	}
 
 	/* ── Abas ────────────────────────────────────────────────── */
@@ -1485,6 +1756,7 @@
 					{ type: 'select', name: 'status', label: 'Status', options: stOpts },
 					{ type: 'select', name: 'type', label: 'Tipo de cliente', options: [
 						[ '', 'Novos e recorrentes' ], [ 'new', 'Só 1ª compra' ], [ 'returning', 'Só recorrentes' ] ] },
+					{ type: 'select', name: 'origin', label: 'Origem', options: originOptions( D.attribution ) },
 					{ type: 'select', name: 'sort', label: 'Ordenar', value: 'date', options: [
 						[ 'date', 'Mais recentes' ], [ 'total', 'Maior valor' ], [ 'items', 'Mais itens' ] ] }
 				],
@@ -1650,6 +1922,9 @@
 			} );
 		}
 
+		/* ---- Origem ---- */
+		if ( D.attribution && $( '[data-mv="attr-groups"]' ) ) buildAttribution( root, D.attribution );
+
 		/* ---- Meta ---- */
 		var meta = $( '[data-mv="meta"]' );
 		if ( meta && D.meta ) {
@@ -1718,6 +1993,103 @@
 		} );
 	}
 
+	/* ── Relatório em PDF ────────────────────────────────────────
+	   Usa a impressão do navegador ("Salvar como PDF") em vez de uma
+	   biblioteca de PDF: o texto sai vetorial e pesquisável, os gráficos
+	   já são SVG, e nada de terceiros entra no admin.
+
+	   Para o papel, todas as abas abrem de uma vez, a página assume a
+	   largura útil de uma A4 paisagem e os gráficos são redesenhados
+	   nessa largura — assim a tipografia sai no tamanho declarado em
+	   vez de encolhida. Ctrl+P passa pelo mesmo caminho (beforeprint),
+	   só sem esperar os exploradores que ainda não carregaram. */
+	function initPdf( root ) {
+		var btn    = root.querySelector( '[data-mv="pdf"]' );
+		var panels = root.querySelectorAll( '.mv-an-panel' );
+		if ( ! panels.length ) {
+			if ( btn ) btn.hidden = true;
+			return;
+		}
+
+		/* Título de cada seção no papel, tirado do rótulo da aba. */
+		Array.prototype.forEach.call( root.querySelectorAll( '.mv-an-tab' ), function ( t ) {
+			var p = document.getElementById( t.getAttribute( 'data-panel' ) );
+			if ( p ) p.insertBefore( el( 'h2', { class: 'mv-an-print-title' }, t.textContent.trim() ), p.firstChild );
+		} );
+
+		/* Carimbo do cabeçalho: categoria filtrada e quando foi gerado. */
+		var head  = root.querySelector( '.mv-an-head' );
+		var stamp = el( 'div', { class: 'mv-an-print-only mv-an-head__stamp' } );
+		if ( head ) head.appendChild( stamp );
+
+		var active = false, saved = [], savedTitle = '';
+
+		function selectedText( sel ) {
+			var s = root.querySelector( sel );
+			return s && s.selectedIndex >= 0 ? s.options[ s.selectedIndex ].text.trim() : '';
+		}
+
+		function enter() {
+			if ( active ) return;
+			active = true;
+			saved = Array.prototype.map.call( panels, function ( p ) { return p.hidden; } );
+			Array.prototype.forEach.call( panels, function ( p ) { p.hidden = false; } );
+
+			var now = new Date();
+			var two = function ( n ) { return ( n < 10 ? '0' : '' ) + n; };
+			var cat = selectedText( '#mv-an-cat' ).replace( /\s*\(\d+\)$/, '' );
+			stamp.textContent = ( cat ? cat + ' · ' : '' ) + 'Gerado em ' +
+				two( now.getDate() ) + '/' + two( now.getMonth() + 1 ) + '/' + now.getFullYear() +
+				' às ' + two( now.getHours() ) + ':' + two( now.getMinutes() );
+
+			/* O navegador usa o título da página como nome do arquivo. */
+			savedTitle = document.title;
+			var per = selectedText( '#mv-an-period' );
+			document.title = 'Relatório Multivegetal' + ( per ? ' - ' + per : '' ) + ' - ' +
+				now.getFullYear() + '-' + two( now.getMonth() + 1 ) + '-' + two( now.getDate() );
+
+			root.classList.add( 'is-printing' );
+			redrawAll();
+			runPending();
+		}
+
+		function leave() {
+			if ( ! active ) return;
+			active = false;
+			root.classList.remove( 'is-printing' );
+			Array.prototype.forEach.call( panels, function ( p, i ) { p.hidden = saved[ i ]; } );
+			document.title = savedTitle;
+			redrawAll();
+		}
+
+		window.addEventListener( 'beforeprint', enter );
+		window.addEventListener( 'afterprint', leave );
+
+		if ( ! btn ) return;
+		var label = btn.textContent;
+
+		btn.addEventListener( 'click', function () {
+			if ( btn.disabled ) return;
+			btn.disabled = true;
+			btn.textContent = 'Preparando PDF…';
+			enter();
+
+			/* Espera os exploradores responderem (com teto, para nunca
+			   travar o botão) e um quadro para o layout assentar. */
+			var started = Date.now();
+			( function wait() {
+				if ( inflight > 0 && Date.now() - started < 20000 ) return setTimeout( wait, 120 );
+				requestAnimationFrame( function () {
+					btn.disabled = false;
+					btn.textContent = label;
+					window.print();
+					/* Navegador sem afterprint: o print() já voltou. */
+					if ( ! ( 'onafterprint' in window ) ) leave();
+				} );
+			} )();
+		} );
+	}
+
 	/* ── Boot ────────────────────────────────────────────────── */
 	function init() {
 		var root = document.querySelector( '.mv-an' );
@@ -1735,6 +2107,7 @@
 		/* Abas por último: a seleção redesenha os gráficos já montados
 		   na largura real do painel visível. */
 		initTabs( root );
+		initPdf( root );
 	}
 
 	if ( document.readyState === 'loading' ) {

@@ -105,6 +105,7 @@ function mv_an_order_query_args() {
 	$status = $g( 'status' );
 	$type   = $g( 'type' );
 	$sort   = $g( 'sort', 'date' );
+	$origin = $g( 'origin' );
 
 	return [
 		'q'      => mb_substr( $g( 'q' ), 0, 80 ),
@@ -113,6 +114,8 @@ function mv_an_order_query_args() {
 		'status' => in_array( $status, mv_an_statuses(), true ) ? $status : '',
 		'type'   => in_array( $type, [ 'new', 'returning' ], true ) ? $type : '',
 		'sort'   => in_array( $sort, [ 'date', 'total', 'items' ], true ) ? $sort : 'date',
+		/* "g:paid", "c:paid_social" ou "s:instagram" — ver mv_an_attr_match(). */
+		'origin' => preg_match( '/^[gcs]:[a-z0-9_-]{1,40}$/', $origin ) ? $origin : '',
 		'page'   => max( 1, absint( $g( 'page', 1 ) ) ),
 		'per'    => min( 100, max( 10, absint( $g( 'per', 25 ) ) ) ),
 	];
@@ -138,6 +141,12 @@ function mv_an_order_list( $range, $args, $q, $limit = null, $enrich = true ) {
 		$from .= ' AND COALESCE(s.returning_customer,0) = 0';
 	} elseif ( 'returning' === $q['type'] ) {
 		$from .= ' AND s.returning_customer = 1';
+	}
+	if ( ! empty( $q['origin'] ) ) {
+		/* A classificação é feita em PHP (regra única, com motivo), então
+		   o filtro vira a lista de pedidos do período que casam com ela. */
+		$ids = mv_an_attr_order_ids( $range, $args, $q['origin'] );
+		$from .= $ids ? ' AND s.order_id IN (' . implode( ',', array_map( 'intval', $ids ) ) . ')' : ' AND 1 = 0';
 	}
 	if ( '' !== $q['q'] ) {
 		$conds = [];
@@ -183,6 +192,7 @@ function mv_an_order_list( $range, $args, $q, $limit = null, $enrich = true ) {
 	$items_map = mv_an_order_items( $oids );
 	$st_labels = mv_an_status_labels();
 	$life      = mv_an_customer_profiles( wp_list_pluck( (array) $rows, 'customer_id' ) );
+	$origins   = mv_an_attr_for_orders( $oids );
 
 	$out = [];
 	foreach ( (array) $rows as $r ) {
@@ -212,6 +222,7 @@ function mv_an_order_list( $range, $args, $q, $limit = null, $enrich = true ) {
 			'coupons'     => [],
 			'discount'    => 0,
 			'url'         => mv_an_order_url( $oid ),
+			'origin'      => isset( $origins[ $oid ] ) ? $origins[ $oid ] : null,
 		];
 
 		if ( $enrich && function_exists( 'wc_get_order' ) ) {

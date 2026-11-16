@@ -130,6 +130,13 @@ function mv_an_page_html() {
 					<button type="button" class="mv-an-btn mv-an-btn--onhead" data-mv="refresh">
 						<?php esc_html_e( 'Recalcular agora', 'mv-analytics' ); ?>
 					</button>
+
+					<?php if ( 'ready' === $state ) : ?>
+						<button type="button" class="mv-an-btn mv-an-btn--accent" data-mv="pdf"
+							title="<?php esc_attr_e( 'Abre a impressão com todas as abas do relatório — escolha “Salvar como PDF”.', 'mv-analytics' ); ?>">
+							<?php esc_html_e( 'Gerar PDF', 'mv-analytics' ); ?>
+						</button>
+					<?php endif; ?>
 				</form>
 			</header>
 
@@ -143,6 +150,7 @@ function mv_an_page_html() {
 				<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p1" aria-controls="mv-p1"><?php esc_html_e( 'Visão geral', 'mv-analytics' ); ?></button>
 				<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p5" aria-controls="mv-p5"><?php esc_html_e( 'Clientes', 'mv-analytics' ); ?></button>
 				<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p6" aria-controls="mv-p6"><?php esc_html_e( 'Pedidos', 'mv-analytics' ); ?></button>
+				<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p7" aria-controls="mv-p7"><?php esc_html_e( 'Origem', 'mv-analytics' ); ?></button>
 				<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p2" aria-controls="mv-p2"><?php esc_html_e( 'Novos vs. Antigos', 'mv-analytics' ); ?></button>
 				<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p3" aria-controls="mv-p3"><?php esc_html_e( 'Produtos', 'mv-analytics' ); ?></button>
 				<button class="mv-an-tab" role="tab" type="button" data-panel="mv-p4" aria-controls="mv-p4"><?php esc_html_e( 'Upselling', 'mv-analytics' ); ?></button>
@@ -290,6 +298,92 @@ function mv_an_page_html() {
 								<p class="mv-an-card__hint"><?php esc_html_e( '“1ª compra” é a fatia dos pedidos com o cupom que vieram de cliente novo. Cupom que só pega recorrente não está trazendo ninguém — está dando desconto a quem já compraria.', 'mv-analytics' ); ?></p>
 							</div>
 							<div class="mv-an-card__body"><div data-mv="coupons"></div></div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- ===== 7. ORIGEM ===== -->
+			<section class="mv-an-panel" id="mv-p7" role="tabpanel" tabindex="0" hidden>
+				<div data-mv="attr-notice"></div>
+				<div class="mv-an-grid">
+					<div class="mv-an-col-12">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'Pago, orgânico ou direto', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'Fatia da receita do período por tipo de tráfego, lida da Origem do pedido que o WooCommerce grava no checkout. A receita aqui fecha com o card Vendas totais: reembolsos abatem do canal do pedido original.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div data-mv="attr-groups"></div></div>
+						</div>
+					</div>
+
+					<div class="mv-an-col-12">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head" data-mv="attr-toggle">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'Evolução da receita por origem', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'Mesmo eixo de tempo da Visão geral. Se a faixa cinza (sem dado) encolhe com o tempo, é a marcação de UTM e o recurso de origem entrando em vigor.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div class="mv-an-legend" data-mv="attr-legend"></div><div class="mv-an-chart" data-mv="attr-chart"></div><div data-mv="attr-table"></div></div>
+						</div>
+					</div>
+
+					<div class="mv-an-col-7">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'De onde vêm as vendas', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'Receita por plataforma, separando o que veio de anúncio do que veio de forma orgânica. É aqui que aparece Instagram pago × Instagram orgânico.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div class="mv-an-legend"><span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--paid"></i><?php esc_html_e( 'Pago', 'mv-analytics' ); ?></span><span class="mv-an-legend__item"><i class="mv-an-legend__swatch mv-an-legend__swatch--organic"></i><?php esc_html_e( 'Orgânico', 'mv-analytics' ); ?></span></div><div data-mv="attr-sources"></div></div>
+						</div>
+					</div>
+
+					<div class="mv-an-col-5">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'Dispositivo', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'Celular ou computador no momento da compra. Só pedidos com dado de origem.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div data-mv="attr-devices"></div></div>
+						</div>
+					</div>
+
+					<div class="mv-an-col-12">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'Canais: quem traz cliente novo e quem traz cliente que volta', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'Clientes novos = 1ª compra da vida feita pelo canal no período. Recompra = desses clientes, quantos já compraram de novo (histórico completo). Valor na vida = gasto médio total de quem estreou pelo canal. Visitas até comprar vem da contagem de sessões do WooCommerce.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div data-mv="attr-channels"></div></div>
+						</div>
+					</div>
+
+					<div class="mv-an-col-12">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'Campanhas', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'Pelo utm_campaign dos links. Campanha com ticket alto mas poucos clientes novos está vendendo para quem já é cliente — vale comparar com o custo no Gerenciador de Anúncios.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div data-mv="attr-campaigns"></div></div>
+						</div>
+					</div>
+
+					<div class="mv-an-col-6">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'Páginas de entrada', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'A primeira página que o cliente abriu na visita em que comprou.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div data-mv="attr-entries"></div></div>
+						</div>
+					</div>
+
+					<div class="mv-an-col-6">
+						<div class="mv-an-card">
+							<div class="mv-an-card__head">
+								<h2 class="mv-an-card__title"><?php esc_html_e( 'Padrão de UTM recomendado', 'mv-analytics' ); ?></h2>
+								<p class="mv-an-card__hint"><?php esc_html_e( 'Sem UTM, Instagram orgânico costuma chegar como Direto (o navegador do app esconde a origem) e anúncio da Meta pode parecer orgânico. Use estes padrões e a classificação fica exata.', 'mv-analytics' ); ?></p>
+							</div>
+							<div class="mv-an-card__body"><div data-mv="attr-utm"></div></div>
 						</div>
 					</div>
 				</div>

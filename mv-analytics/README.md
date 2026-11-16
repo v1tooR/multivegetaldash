@@ -17,6 +17,7 @@ Poppins, e tokens com fallback embutido, como em `mv-products-grid/assets/grid.c
 | **C** | Produtos + upselling | ✅ pronto |
 | **D** | Export CSV server-side, cache, `.zip` instalável | ✅ pronto |
 | **E** (1.3) | Abas Clientes e Pedidos, ficha do cliente, evolução com comparação, mapa de calor | ✅ pronto |
+| **F** (1.4) | Aba Origem: de onde veio cada venda, pago × orgânico × direto, campanhas | ✅ pronto |
 
 ## O que o painel responde
 
@@ -25,6 +26,7 @@ Poppins, e tokens com fallback embutido, como em `mv-products-grid/assets/grid.c
 | **Visão geral** | Quanto vendi, para quantos clientes, quantos são novos? Estou acima do período anterior (linha atual × comparada, por hora/dia/semana/mês)? Em que dia e hora os clientes compram? Quantos pedidos ficaram parados, cancelados ou malsucedidos? |
 | **Clientes** | Quantas vezes cada cliente já comprou? Quem são os melhores do período? De que estados vem a receita? Quem está em risco ou inativo (para reativação)? |
 | **Pedidos** | Quais pedidos exatamente entraram nos totais, com os itens de cada um? Qual a compra nº daquele cliente? Qual meio de pagamento traz ticket maior? Qual cupom traz cliente novo e qual só dá desconto a quem já compraria? |
+| **Origem** | De onde vieram as vendas (Instagram, Google, WhatsApp…)? Quanto é anúncio, quanto é orgânico, quanto é direto? Instagram pago × orgânico? Qual canal traz cliente novo e qual traz cliente que volta? Qual campanha vendeu mais? Por qual página o cliente entrou? |
 | **Novos vs. Antigos / Produtos / Upselling** | Inalteradas desde a 1.2. |
 
 Clicar no nome de um cliente em qualquer tabela abre a **ficha do cliente**:
@@ -183,6 +185,42 @@ passos e ponta clara em 2.17:1 — aprovada em todos os gates ordinais.
   continua dizendo a direção real.
 - **Eixo único.** Nenhum gráfico tem dois eixos Y.
 
+## Origem das vendas (1.4)
+
+O plugin não rastreia nada por conta própria. O WooCommerce 8.5+ grava a origem
+de cada pedido no checkout (recurso **Origem do pedido** / Order Attribution) em
+metadados `_wc_order_attribution_*`. A aba lê esses campos — em `wc_orders_meta`
+com HPOS, em `postmeta` sem — e classifica cada pedido com uma regra única
+(`mv_an_attr_classify()` em `includes/attribution.php`), nesta ordem:
+
+1. **Manual** — pedido criado no painel, app ou PDV.
+2. **Pago** — `utm_medium` de mídia paga (cpc, ppc, paid, paid_social, ads,
+   display, trafego_pago…), `utm_source` como `instagram_ads`, ou parâmetro de
+   clique de anúncio no link de entrada (gclid, gbraid, wbraid, gad_source,
+   msclkid, ttclid, ad_id). **fbclid sozinho não conta como pago**: a Meta põe
+   fbclid também em link orgânico.
+3. **Direto** — acesso digitado, favorito ou app que esconde a origem.
+4. **Orgânico** — e-mail/CRM, WhatsApp/mensagem, rede social, busca orgânica ou
+   link em outro site.
+5. **Sem dado** — pedido sem metadados (anterior ao recurso, importado, ou com o
+   rastreio bloqueado por adblock/consentimento).
+
+Grafias da mesma plataforma são agrupadas (`ig`, `instagram`, `l.instagram.com`
+→ Instagram; `fb`, `m.facebook.com` → Facebook; `{{site_source_name}}` da Meta
+é reconhecido). Cada pedido guarda o **motivo** da classificação, visível no
+explorador de pedidos e no CSV, para conferência.
+
+A receita por canal fecha com o card **Vendas totais**: reembolsos herdam a
+origem do pedido original.
+
+Ajustes sem editar o plugin: filtro `mv_analytics_paid_medium_regex` (quais
+`utm_medium` contam como pago) e `mv_analytics_attribution_classify` (reescreve
+o resultado de um pedido).
+
+Também entram na 1.4: coluna e filtro **Origem** no explorador de pedidos, canal de
+aquisição e origem de cada compra na ficha do cliente, e 8 colunas de origem no
+CSV de pedidos.
+
 ## Arquivos
 
 ```
@@ -191,6 +229,7 @@ mv-analytics/
 ├── assets/dashboard.js    # SVG inline, sem biblioteca; hover, ordenação, CSV, AJAX
 ├── includes/customers.php # ranking, estados, explorador e ficha do cliente
 ├── includes/orders.php    # explorador de pedidos, cupons, formas de pagamento
+├── includes/attribution.php # origem das vendas: leitura, classificação, agregado
 ├── preview.html           # dados fictícios, roda sem WordPress
 └── README.md
 ```

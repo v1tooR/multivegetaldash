@@ -337,6 +337,7 @@ function mv_an_customer_detail( $customer_id ) {
 	/* Itens de cada pedido. */
 	$items_map = mv_an_order_items( wp_list_pluck( $real, 'order_id' ) );
 	$st_labels = mv_an_status_labels();
+	$origins   = mv_an_attr_for_orders( wp_list_pluck( $real, 'order_id' ) );
 
 	$list = [];
 	foreach ( $real as $o ) {
@@ -354,8 +355,29 @@ function mv_an_customer_detail( $customer_id ) {
 			'returning' => (int) $o['returning_customer'] === 1,
 			'lines'     => isset( $items_map[ $oid ] ) ? $items_map[ $oid ] : [],
 			'url'       => mv_an_order_url( $oid ),
+			'origin'    => isset( $origins[ $oid ] ) ? $origins[ $oid ] : null,
 		];
 	}
+
+	/* Canal de aquisição = origem da 1ª compra (a lista vem da mais nova
+	   para a mais antiga). Só conta se a 1ª compra tiver dado de origem. */
+	$acquisition = null;
+	if ( $list ) {
+		$fo = end( $list );
+		if ( $fo['origin'] && 'unknown' !== $fo['origin']['channel'] ) {
+			$acquisition = $fo['origin'];
+		}
+		reset( $list );
+	}
+	$by_ch = [];
+	foreach ( $list as $o ) {
+		if ( ! $o['origin'] || 'unknown' === $o['origin']['channel'] ) continue;
+		$k = $o['origin']['groupLbl'] . ' · ' . ( $o['origin']['sourceLbl'] ? $o['origin']['sourceLbl'] : $o['origin']['channelLbl'] );
+		if ( ! isset( $by_ch[ $k ] ) ) $by_ch[ $k ] = [ 'label' => $k, 'group' => $o['origin']['group'], 'orders' => 0, 'revenue' => 0 ];
+		$by_ch[ $k ]['orders']++;
+		$by_ch[ $k ]['revenue'] = round( $by_ch[ $k ]['revenue'] + $o['total'], 2 );
+	}
+	usort( $by_ch, function ( $a, $b ) { return $b['orders'] <=> $a['orders']; } );
 
 	/* Produtos favoritos: quantas vezes, quanto, e quando foi a última. */
 	$prod = [];
@@ -459,6 +481,8 @@ function mv_an_customer_detail( $customer_id ) {
 		'products'  => array_slice( $prod, 0, 15 ),
 		'coupons'   => $coupons,
 		'orders'    => $list,
+		'acquisition' => $acquisition,
+		'origins'   => array_values( $by_ch ),
 		'links'     => $links,
 	];
 }

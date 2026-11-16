@@ -1266,3 +1266,201 @@ html.mv-an-noscroll, html.mv-an-noscroll body { overflow: hidden; }
 		animation-duration: 1ms;
 	}
 }
+
+/* ============================================================
+   18. ORIGEM DAS VENDAS
+   Três matizes categóricas validadas (claro e escuro, CVD ≥ 8,
+   visão normal ≥ 15, contraste ≥ 3:1) + cinza neutro para
+   "sem dado", que é ausência de informação, não uma categoria.
+   ============================================================ */
+.mv-an {
+	--mv-o-paid:    #c27c22;
+	--mv-o-organic: #2b7f56;
+	--mv-o-direct:  #5b7fd0;
+	--mv-o-none:    #c8c4bc;
+}
+
+.mv-an-mark--paid    { fill: var(--mv-o-paid); }
+.mv-an-mark--organic { fill: var(--mv-o-organic); }
+.mv-an-mark--direct  { fill: var(--mv-o-direct); }
+.mv-an-mark--none    { fill: var(--mv-o-none); }
+.mv-an-legend__swatch--paid    { background: var(--mv-o-paid); }
+.mv-an-legend__swatch--organic { background: var(--mv-o-organic); }
+.mv-an-legend__swatch--direct  { background: var(--mv-o-direct); }
+.mv-an-legend__swatch--none    { background: var(--mv-o-none); }
+
+/* Badge de origem: fundo tingido + texto escuro (contraste AA),
+   com o ponto na cor da série para ligar ao gráfico. */
+.mv-an-obadge {
+	display: inline-flex; align-items: center; gap: 6px;
+	padding: 2px 9px; border-radius: 9999px;
+	font-size: 0.72rem; font-weight: 600; line-height: 1.6;
+	white-space: nowrap; max-width: 100%;
+	overflow: hidden; text-overflow: ellipsis;
+	background: var(--mv-c-bg-muted); color: var(--mv-c-muted);
+}
+.mv-an-obadge::before {
+	content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%;
+	background: var(--mv-o-none);
+}
+.mv-an-obadge--paid    { background: #f7e8d3; color: #6e420c; }
+.mv-an-obadge--organic { background: #dcefe4; color: #1b5236; }
+.mv-an-obadge--direct  { background: #e2e9f9; color: #2f4a8f; }
+.mv-an-obadge--paid::before    { background: var(--mv-o-paid); }
+.mv-an-obadge--organic::before { background: var(--mv-o-organic); }
+.mv-an-obadge--direct::before  { background: var(--mv-o-direct); }
+
+/* Blocos por grupo + barra de composição 100%. */
+.mv-an-otiles {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+	margin-bottom: 18px;
+}
+.mv-an-otile {
+	padding: 14px 16px;
+	border: 1px solid var(--mv-c-border);
+	border-radius: 12px;
+	background: var(--mv-c-bg);
+	display: flex; flex-direction: column; gap: 2px;
+}
+.mv-an-otile__label { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; font-weight: 600; color: var(--mv-c-text); }
+.mv-an-otile__label i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.mv-an-otile__value { font-size: 1.35rem; font-weight: 700; color: var(--mv-c-text); font-variant-numeric: tabular-nums; }
+.mv-an-otile__sub { font-size: 0.75rem; color: var(--mv-c-muted); font-variant-numeric: tabular-nums; }
+
+.mv-an-mix {
+	display: flex; gap: 2px; height: 14px;
+	border-radius: 9999px; overflow: hidden;
+	background: var(--mv-c-bg-muted);
+}
+.mv-an-mix > span { height: 100%; min-width: 2px; }
+
+/* Barra dividida pago | orgânico dentro do mesmo trilho. */
+.mv-an-bar__track--split { display: flex; gap: 2px; background: var(--mv-c-bg-muted); }
+.mv-an-bar__track--split .mv-an-bar__fill { border-radius: 0; }
+.mv-an-bar__track--split .mv-an-bar__fill:first-child { border-radius: 9999px 0 0 9999px; }
+.mv-an-bar__track--split .mv-an-bar__fill:last-child  { border-radius: 0 9999px 9999px 0; }
+.mv-an-bar__fill--paid    { background: var(--mv-o-paid); }
+.mv-an-bar__fill--organic { background: var(--mv-o-organic); }
+.mv-an-bar__sub { grid-column: 1 / -1; font-size: 0.72rem; color: var(--mv-c-muted); font-variant-numeric: tabular-nums; }
+
+/* Guia de UTM. */
+.mv-an-utm { display: flex; flex-direction: column; gap: 14px; }
+.mv-an-utm__item h4 { margin: 0 0 4px; font-size: 0.8rem; font-weight: 600; color: var(--mv-c-text); }
+.mv-an-utm__item p { margin: 0 0 6px; font-size: 0.75rem; color: var(--mv-c-muted); line-height: 1.5; }
+.mv-an-utm__item code {
+	display: block; padding: 8px 10px; border-radius: 8px;
+	background: var(--mv-c-bg-soft); border: 1px solid var(--mv-c-border);
+	font-size: 0.72rem; line-height: 1.5; color: var(--mv-c-text);
+	word-break: break-all; white-space: pre-wrap;
+}
+
+.mv-an-notice--info { background: var(--mv-c-bg-soft); border-color: var(--mv-c-border); border-left-color: var(--mv-o-direct); }
+
+/* ============================================================
+   19. RELATÓRIO EM PDF (impressão)
+   O botão "Gerar PDF" abre todas as abas, aplica .is-printing e
+   chama a impressão do navegador. A largura de 1047px é a área útil
+   de uma A4 paisagem com margem de 10mm (277mm a 96dpi): os gráficos
+   são redesenhados nela e saem no papel sem escala.
+   ============================================================ */
+
+.mv-an-print-title,
+.mv-an-print-only { display: none; }
+
+.mv-an.is-printing .mv-an-page { max-width: 1047px; margin-inline: 0; padding: 0; }
+
+@page { size: A4 landscape; margin: 10mm; }
+
+@media print {
+	/* Casca do wp-admin fora do papel. */
+	html.wp-toolbar { padding-top: 0 !important; }
+	#wpadminbar,
+	#adminmenumain,
+	#adminmenuback,
+	#adminmenuwrap,
+	#wpfooter,
+	#screen-meta,
+	#screen-meta-links,
+	#wpbody-content > .notice,
+	#wpbody-content > .update-nag,
+	#wpbody-content > .error,
+	#wpbody-content > .updated { display: none !important; }
+	#wpcontent,
+	#wpbody-content { margin: 0 !important; padding: 0 !important; }
+	html,
+	body,
+	#wpwrap,
+	#wpcontent,
+	#wpbody { background: #fff !important; }
+
+	.mv-an {
+		font-size: 14px;
+		-webkit-print-color-adjust: exact;
+		print-color-adjust: exact;
+	}
+	.mv-an-page { max-width: none; padding: 0; }
+
+	/* Controles não fazem sentido no papel. */
+	.mv-an-head__tools,
+	.mv-an-tabs,
+	.mv-an-toggle,
+	.mv-an-xp__bar,
+	.mv-an-xp__nav,
+	.mv-an-btn,
+	.mv-an-drawer,
+	.mv-an-tip { display: none !important; }
+
+	.mv-an-print-only { display: block; }
+	.mv-an-head { box-shadow: none; break-inside: avoid; }
+	.mv-an-head__stamp { font-size: 0.75rem; opacity: .85; }
+
+	/* Uma seção por página, com o nome da aba como título. */
+	.mv-an-panel { display: block !important; }
+	.mv-an-panel + .mv-an-panel { break-before: page; }
+	.mv-an-print-title {
+		display: block;
+		margin: 0 0 14px;
+		padding-bottom: 8px;
+		font-size: 1.1rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		color: var(--mv-c-primary);
+		border-bottom: 2px solid var(--mv-c-accent);
+		break-after: avoid;
+	}
+
+	.mv-an-card,
+	.mv-an-card:hover {
+		box-shadow: none;
+		border-color: var(--mv-c-border);
+		break-inside: avoid;
+	}
+	.mv-an-card__head { break-after: avoid; }
+	.mv-an-kpis { break-inside: avoid; }
+	.mv-an-grid { gap: 14px; margin-bottom: 14px; }
+
+	/* Tabela longa quebra entre linhas, nunca no meio de uma, e repete
+	   o cabeçalho em cada página. */
+	.mv-an-tablewrap { overflow: visible; }
+	.mv-an thead { display: table-header-group; }
+
+	/* Na tela a tabela larga rola; no papel não há rolagem, então ela
+	   precisa caber: células mais justas e cabeçalho que quebra linha. */
+	.mv-an-table { font-size: 0.7rem; }
+	.mv-an-table th,
+	.mv-an-table td { padding: 6px 6px; }
+	.mv-an-table th {
+		font-size: 0.56rem;
+		letter-spacing: 0.04em;
+		white-space: normal;
+	}
+	.mv-an-table th[data-sort]::after { content: none; }
+	.mv-an-minibar { min-width: 40px; }
+	.mv-an-badge { font-size: 0.56rem; padding-inline: 7px; letter-spacing: 0.04em; }
+	.mv-an-heat { min-width: 0; }
+	.mv-an tr { break-inside: avoid; }
+
+	.mv-an a { color: inherit; text-decoration: none; }
+}
